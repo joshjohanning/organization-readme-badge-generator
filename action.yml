@@ -1,0 +1,27 @@
+name: "GitHub Organization Readme Badge Generator"
+description: "An action to create markdown badges for your GitHub organization's README.md file"
+
+branding:
+  icon: "award"
+  color: "blue"
+
+inputs:
+  organization:
+    description: "The GitHub organization to query"
+    required: true
+    default: "${{ github.repository_owner }}"
+  token:
+    description: "PAT or GitHub App token to query the GitHub API"
+    required: true
+    default: "${{ github.token }}"
+  api_url:
+    description: "The URL of the Prisma Cloud API"
+    required: true
+    default: "${{ github.api_url }}"
+outputs:
+  badges:
+    description: "The badge markdown to add to your README.md file"
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
