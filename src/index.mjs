@@ -9,7 +9,7 @@ const argv = yargs(hideBin(process.argv)).argv;
 
 const organization = argv.organization || core.getInput("organization", { required: true });
 const token = argv.token || core.getInput("token", { required: true });
-const days = argv.days || core.getInput("days", { required: false }) || 30;
+const days = argv.days || core.getInput("days", { required: false }) || 31;
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
@@ -68,23 +68,22 @@ const getRepositories = async (org) => {
   return repositories;
 };
 
-// get pull request open and merged count - we have to do 2 separate queries b/c pagination
-const getPullRequestsCount = async (org, repo) => {
-  let endCursorPR, endCursorMergedPR;
-  let hasNextPagePR = true, hasNextPageMergedPR = true;
+// get pull request open and merged count
+const getPullRequestsCount = async (org, repo, prFilterDate) => {
+  let endCursor;
+  let hasNextPage = true;
   let total = 0, merged = 0;
 
-  // Get the date 30 days ago
-  const date30DaysAgo = new Date();
-  date30DaysAgo.setDate(date30DaysAgo.getDate() - 30);
-
-  while (hasNextPagePR) {
+  while (hasNextPage) {
     const { repository } = await graphqlWithAuth(`
       query ($org: String!, $repo: String!, $after: String) {
         repository(owner: $org, name: $repo) {
           pullRequests(first: 100, after: $after) {
             nodes {
               createdAt
+              mergedAt
+              state
+              title
             }
             pageInfo {
               endCursor
@@ -93,34 +92,24 @@ const getPullRequestsCount = async (org, repo) => {
           }
         }
       }
-    `, { org, repo, after: endCursorPR });
+    `, { org, repo, after: endCursor });
 
-    total += repository.pullRequests.nodes.filter(pr => new Date(pr.createdAt) >= date30DaysAgo).length;
-    hasNextPagePR = repository.pullRequests.pageInfo.hasNextPage;
-    endCursorPR = repository.pullRequests.pageInfo.endCursor;
-  }
+    const pullRequests = repository.pullRequests.nodes
 
-  while (hasNextPageMergedPR) {
-    const { repository } = await graphqlWithAuth(`
-      query ($org: String!, $repo: String!, $after: String) {
-        repository(owner: $org, name: $repo) {
-          mergedPullRequests: pullRequests(states: MERGED, first: 100, after: $after) {
-            nodes {
-              createdAt
-            }
-            pageInfo {
-              endCursor
-              hasNextPage
-            }
-          }
-        }
-      }
-    `, { org, repo, after: endCursorMergedPR });
+    const openPullRequests = repository.pullRequests.nodes.filter(pr => new Date(pr.createdAt).toISOString().slice(0,10) >= prFilterDate);
+    total += openPullRequests.length;
 
-    merged += repository.mergedPullRequests.nodes.filter(pr => new Date(pr.createdAt) >= date30DaysAgo).length;
-    hasNextPageMergedPR = repository.mergedPullRequests.pageInfo.hasNextPage;
-    endCursorMergedPR = repository.mergedPullRequests.pageInfo.endCursor;
-  }
+    const mergedPRs = pullRequests.filter(pr => pr.state === 'MERGED' && new Date(pr.mergedAt).toISOString().slice(0,10) >= prFilterDate);
+    merged += mergedPRs.length;
+
+    // TODO: Do we want closed (aka not merged) PRs?
+
+    // Print the title of the merged PRs
+    mergedPRs.forEach(pr => console.log(pr.title));
+
+    hasNextPage = repository.pullRequests.pageInfo.hasNextPage;
+    endCursor = repository.pullRequests.pageInfo.endCursor;
+    }
 
   return {
     total,
@@ -132,8 +121,13 @@ getRepositories(organization).then(async repos => {
   let totalOpenPRs = 0;
   let totalMergedPRs = 0;
 
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  const prFilterDate = date.toISOString();
+  console.log(`Date 30 days ago in UTC: ${prFilterDate}`);
+
   for (const repo of repos) {
-    const { total, merged } = await getPullRequestsCount(organization, repo);
+    const { total, merged } = await getPullRequestsCount(organization, repo, prFilterDate);
     totalOpenPRs += total;
     totalMergedPRs += merged;
   }
