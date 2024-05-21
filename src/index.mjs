@@ -15,12 +15,13 @@ const graphqlWithAuth = graphql.defaults({
   },
 });
 
-let badgeURLs = [];
+let badgeMarkdown = [];
 
-const generateBadgeURL = (text, number, color) => {
+const generateBadgeMarkdown = (text, number, color) => {
   const baseURL = 'https://img.shields.io/static/v1';
   const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
-  return url;
+  const markdownImage = `![${text}](${url})`;
+  return markdownImage
 };
 
 const getRepositoryCount = async (org) => {
@@ -111,14 +112,19 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
 };
 
 const generateBadges = async () => {
+  // repo count
   const repos = await getRepositories(organization);
   const repoCount = await getRepositoryCount(organization);
+  core.info(`Total repositories: ${repoCount}`);
+
+  // pull requests
   let totalOpenPRs = 0;
   let totalMergedPRs = 0;
 
   const date = new Date();
   date.setUTCDate(date.getUTCDate() - days);
   const prFilterDate = date.toISOString();
+  core.debug(`Filtering PRs created after ${prFilterDate}`);
 
   for (const repo of repos) {
     const { total, merged } = await getPullRequestsCount(organization, repo, prFilterDate);
@@ -126,13 +132,19 @@ const generateBadges = async () => {
     totalMergedPRs += merged;
   }
 
-  badgeURLs.push(generateBadgeURL(`Total repositories`, repoCount, 'blue'));
-  badgeURLs.push(generateBadgeURL(`Open PRs in last ${days} days`, totalOpenPRs, 'blue'));
-  badgeURLs.push(generateBadgeURL(`Merged PRs in last ${days} days`, totalMergedPRs, 'blue'));
+  core.info(`Total open pull requests in last ${days} days for ${organization}: ${totalOpenPRs}`);
+  core.info(`Total merged pull requests in last ${days} days for ${organization}: ${totalMergedPRs}`);
 
-  return badgeURLs;
+  badgeMarkdown.push(generateBadgeMarkdown(`Total repositories`, repoCount, 'blue'));
+  badgeMarkdown.push(generateBadgeMarkdown(`Open PRs in last ${days} days`, totalOpenPRs, 'blue'));
+  badgeMarkdown.push(generateBadgeMarkdown(`Merged PRs in last ${days} days`, totalMergedPRs, 'blue'));
+
+  return badgeMarkdown;
 };
 
-generateBadges().then(badgeURLs => {
-  console.log(badgeURLs);
+generateBadges().then(badgeMarkdown => {
+  core.info('');
+  let badges = badgeMarkdown.join(' ');
+  core.info(`Badge markdown: ${badges}`);
+  core.setOutput("badges", badges);
 }).catch(console.error);
