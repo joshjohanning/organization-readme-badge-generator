@@ -5,8 +5,6 @@ import { graphql } from "@octokit/graphql";
 
 const argv = yargs(hideBin(process.argv)).argv;
 
-// call via node convert-json-to-markdown.js --organization=joshjohanning-org --token=ghp_abc
-
 const organization = argv.organization || core.getInput("organization", { required: true });
 const token = argv.token || core.getInput("token", { required: true });
 const days = argv.days || core.getInput("days", { required: false }) || 30;
@@ -18,13 +16,13 @@ const graphqlWithAuth = graphql.defaults({
 });
 
 let badgeURLs = [];
+
 const generateBadgeURL = (text, number, color) => {
   const baseURL = 'https://img.shields.io/static/v1';
   const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
   return url;
 };
 
-// get repository count
 const getRepositoryCount = async (org) => {
   const { organization } = await graphqlWithAuth(`
     query ($organization: String!) {
@@ -39,7 +37,6 @@ const getRepositoryCount = async (org) => {
   return organization.repositories.totalCount;
 };
 
-// get repositories
 const getRepositories = async (org) => {
   let endCursor;
   let hasNextPage = true;
@@ -71,7 +68,6 @@ const getRepositories = async (org) => {
   return repositories;
 };
 
-// get pull request open and merged count
 const getPullRequestsCount = async (org, repo, prFilterDate) => {
   let endCursor;
   let hasNextPage = true;
@@ -98,13 +94,11 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
 
     const pullRequests = repository.pullRequests.nodes
 
-    const openPullRequests = repository.pullRequests.nodes.filter(pr => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate);
+    const openPullRequests = pullRequests.filter(pr => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate);
     total += openPullRequests.length;
 
     const mergedPRs = pullRequests.filter(pr => pr.state === 'MERGED' && new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate);
     merged += mergedPRs.length;
-
-    // TODO: Do we want closed (aka not merged) PRs?
 
     hasNextPage = repository.pullRequests.pageInfo.hasNextPage;
     endCursor = repository.pullRequests.pageInfo.endCursor;
@@ -116,44 +110,29 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
   };
 };
 
-Promise.all([
-  // return repo count
-  getRepositoryCount(organization).then(count => {
-    console.log(`Total repositories: ${count}`);
-    const reposTotalBadgeUrl = generateBadgeURL(`Total repositories`, count, 'blue');
-    badgeURLs.push(reposTotalBadgeUrl);
-  }),
-  // return open and merged PRs
-  getRepositories(organization).then(async repos => {
-    let totalOpenPRs = 0;
-    let totalMergedPRs = 0;
+const generateBadges = async () => {
+  const repos = await getRepositories(organization);
+  const repoCount = await getRepositoryCount(organization);
+  let totalOpenPRs = 0;
+  let totalMergedPRs = 0;
 
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - days);
-    const prFilterDate = date.toISOString();
-    console.log(`Date 30 days ago in UTC: ${prFilterDate}`);
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - days);
+  const prFilterDate = date.toISOString();
 
-    for (const repo of repos) {
-      const { total, merged } = await getPullRequestsCount(organization, repo, prFilterDate);
-      totalOpenPRs += total;
-      totalMergedPRs += merged;
-    }
+  for (const repo of repos) {
+    const { total, merged } = await getPullRequestsCount(organization, repo, prFilterDate);
+    totalOpenPRs += total;
+    totalMergedPRs += merged;
+  }
 
-    console.log(`Total open pull requests in last ${days} days for ${organization}: ${totalOpenPRs}`);
-    console.log(`Total merged pull requests in last ${days} days for ${organization}: ${totalMergedPRs}`);
-    const openPRsBadgeURL = generateBadgeURL(`Open PRs in last ${days} days`, totalOpenPRs, 'blue');
-    badgeURLs.push(openPRsBadgeURL);
-    const mergedPRsBadgeURL = generateBadgeURL(`Merged PRs in last ${days} days`, totalMergedPRs, 'blue');
-    badgeURLs.push(mergedPRsBadgeURL);
-  })
-]).then(() => {
+  badgeURLs.push(generateBadgeURL(`Total repositories`, repoCount, 'blue'));
+  badgeURLs.push(generateBadgeURL(`Open PRs in last ${days} days`, totalOpenPRs, 'blue'));
+  badgeURLs.push(generateBadgeURL(`Merged PRs in last ${days} days`, totalMergedPRs, 'blue'));
+
+  return badgeURLs;
+};
+
+generateBadges().then(badgeURLs => {
   console.log(badgeURLs);
 }).catch(console.error);
-
-
-// TODO: handle secondary rate limit error with retries? 
-
-// TODO: take the results and create them as an output
-// TODO: create function for markdown badges
-
-// console.log(badgeURLs);
