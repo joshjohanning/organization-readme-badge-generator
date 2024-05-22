@@ -2,16 +2,19 @@ import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 import core from "@actions/core";
 import { graphql } from "@octokit/graphql";
-
 const argv = yargs(hideBin(process.argv)).argv;
+
+// run via `node src/index.mjs --organization=joshjohanning-org --token=ghp_abc
 
 const organization = argv.organization || core.getInput("organization", { required: true });
 const token = argv.token || core.getInput("token", { required: true });
 const days = argv.days || core.getInput("days", { required: false }) || 30;
+const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl", { required: false }) || 'https://api.github.com/graphql';
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
     authorization: `token ${token}`,
+    baseUrl: graphqlUrl
   },
 });
 
@@ -47,7 +50,7 @@ const getRepositories = async (org) => {
     const { organization } = await graphqlWithAuth(`
       query ($organization: String!, $after: String) {
         organization (login: $organization) {
-          repositories(last: 30, after: $after) {
+          repositories(first: 100, after: $after) {
             nodes {
               name
             }

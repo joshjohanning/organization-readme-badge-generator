@@ -14,10 +14,14 @@ inputs:
     description: "PAT or GitHub App token to query the GitHub API"
     required: true
     default: "${{ github.token }}"
-  api_url:
-    description: "The URL of the Prisma Cloud API"
+  graphql_url:
+    description: "The URL to the GitHub GraphQL API endpoint"
     required: true
-    default: "${{ github.api_url }}"
+    default: "${{ github.graphql_url }}" # https://api.github.com/graphql
+  days:
+    description: "For stats that have a date window, the number of days to query for"
+    required: true
+    default: "30"
 outputs:
   badges:
     description: "The badge markdown to add to your README.md file"
