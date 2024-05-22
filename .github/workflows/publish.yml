@@ -1,8 +1,11 @@
 name: "Publish GitHub Action"
+
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
 
 permissions:
   contents: write
