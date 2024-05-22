@@ -7,12 +7,10 @@ const argv = yargs(hideBin(process.argv))
   .option('organization', {
     describe: 'The organization',
     type: 'string',
-    demandOption: true
   })
   .option('token', {
     describe: 'The token',
     type: 'string',
-    demandOption: true
   })
   .option('days', {
     describe: 'The number of days',
@@ -33,6 +31,15 @@ const organization = argv.organization || core.getInput("organization");
 const token = argv.token || core.getInput("token");
 const days = argv.days || core.getInput("days");
 const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl");
+
+function requireInput(input, name) {
+  if (!input) {
+    throw new Error(`${name} is required`);
+  }
+}
+
+requireInput(organization, 'Organization');
+requireInput(token, 'Token');
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
