@@ -51,6 +51,7 @@ const graphqlWithAuth = graphql.defaults({
 let badgeMarkdown = [];
 
 const generateBadgeMarkdown = (text, number, color) => {
+  // TODO: use native library? https://www.npmjs.com/package/badge-maker
   const baseURL = "https://img.shields.io/static/v1";
   const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
   const markdownImage = `![${text}](${url})`;
