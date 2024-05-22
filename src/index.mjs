@@ -1,26 +1,26 @@
 import core from "@actions/core";
 import { graphql } from "@octokit/graphql";
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 const argv = yargs(hideBin(process.argv))
-  .option('organization', {
-    describe: 'The organization',
-    type: 'string',
+  .option("organization", {
+    describe: "The organization",
+    type: "string",
   })
-  .option('token', {
-    describe: 'The token',
-    type: 'string',
+  .option("token", {
+    describe: "The token",
+    type: "string",
   })
-  .option('days', {
-    describe: 'The number of days',
-    type: 'number',
-    default: 30
+  .option("days", {
+    describe: "The number of days",
+    type: "number",
+    default: 30,
   })
-  .option('graphqlUrl', {
-    describe: 'The GraphQL URL',
-    type: 'string',
-    default: 'https://api.github.com/graphql'
+  .option("graphqlUrl", {
+    describe: "The GraphQL URL",
+    type: "string",
+    default: "https://api.github.com/graphql",
   })
   .help()
   .parse();
@@ -38,27 +38,28 @@ function requireInput(input, name) {
   }
 }
 
-requireInput(organization, 'Organization');
-requireInput(token, 'Token');
+requireInput(organization, "Organization");
+requireInput(token, "Token");
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
     authorization: `token ${token}`,
-    baseUrl: graphqlUrl
+    baseUrl: graphqlUrl,
   },
 });
 
 let badgeMarkdown = [];
 
 const generateBadgeMarkdown = (text, number, color) => {
-  const baseURL = 'https://img.shields.io/static/v1';
+  const baseURL = "https://img.shields.io/static/v1";
   const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
   const markdownImage = `![${text}](${url})`;
-  return markdownImage
+  return markdownImage;
 };
 
 const getRepositoryCount = async (org) => {
-  const { organization } = await graphqlWithAuth(`
+  const { organization } = await graphqlWithAuth(
+    `
     query ($organization: String!) {
       organization (login: $organization) {
         repositories {
@@ -66,7 +67,9 @@ const getRepositoryCount = async (org) => {
         }
       }
     }
-  `, { organization: org });
+  `,
+    { organization: org },
+  );
 
   return organization.repositories.totalCount;
 };
@@ -77,7 +80,8 @@ const getRepositories = async (org) => {
   const repositories = [];
 
   while (hasNextPage) {
-    const { organization } = await graphqlWithAuth(`
+    const { organization } = await graphqlWithAuth(
+      `
       query ($organization: String!, $after: String) {
         organization (login: $organization) {
           repositories(first: 100, after: $after) {
@@ -91,9 +95,13 @@ const getRepositories = async (org) => {
           }
         }
       }
-    `, { organization: org, after: endCursor });
+    `,
+      { organization: org, after: endCursor },
+    );
 
-    repositories.push(...organization.repositories.nodes.map(repo => repo.name));
+    repositories.push(
+      ...organization.repositories.nodes.map((repo) => repo.name),
+    );
 
     hasNextPage = organization.repositories.pageInfo.hasNextPage;
     endCursor = organization.repositories.pageInfo.endCursor;
@@ -105,10 +113,12 @@ const getRepositories = async (org) => {
 const getPullRequestsCount = async (org, repo, prFilterDate) => {
   let endCursor;
   let hasNextPage = true;
-  let total = 0, merged = 0;
+  let total = 0,
+    merged = 0;
 
   while (hasNextPage) {
-    const { repository } = await graphqlWithAuth(`
+    const { repository } = await graphqlWithAuth(
+      `
       query ($org: String!, $repo: String!, $after: String) {
         repository(owner: $org, name: $repo) {
           pullRequests(first: 100, after: $after) {
@@ -124,14 +134,22 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
           }
         }
       }
-    `, { org, repo, after: endCursor });
+    `,
+      { org, repo, after: endCursor },
+    );
 
-    const pullRequests = repository.pullRequests.nodes
+    const pullRequests = repository.pullRequests.nodes;
 
-    const openPullRequests = pullRequests.filter(pr => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate);
+    const openPullRequests = pullRequests.filter(
+      (pr) => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate,
+    );
     total += openPullRequests.length;
 
-    const mergedPRs = pullRequests.filter(pr => pr.state === 'MERGED' && new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate);
+    const mergedPRs = pullRequests.filter(
+      (pr) =>
+        pr.state === "MERGED" &&
+        new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate,
+    );
     merged += mergedPRs.length;
 
     hasNextPage = repository.pullRequests.pageInfo.hasNextPage;
@@ -140,7 +158,7 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
 
   return {
     total,
-    merged
+    merged,
   };
 };
 
@@ -160,24 +178,48 @@ const generateBadges = async () => {
   core.debug(`Filtering PRs created after ${prFilterDate}`);
 
   for (const repo of repos) {
-    const { total, merged } = await getPullRequestsCount(organization, repo, prFilterDate);
+    const { total, merged } = await getPullRequestsCount(
+      organization,
+      repo,
+      prFilterDate,
+    );
     totalOpenPRs += total;
     totalMergedPRs += merged;
   }
 
-  core.info(`Total open pull requests in last ${days} days for ${organization}: ${totalOpenPRs}`);
-  core.info(`Total merged pull requests in last ${days} days for ${organization}: ${totalMergedPRs}`);
+  core.info(
+    `Total open pull requests in last ${days} days for ${organization}: ${totalOpenPRs}`,
+  );
+  core.info(
+    `Total merged pull requests in last ${days} days for ${organization}: ${totalMergedPRs}`,
+  );
 
-  badgeMarkdown.push(generateBadgeMarkdown(`Total repositories`, repoCount, 'blue'));
-  badgeMarkdown.push(generateBadgeMarkdown(`Open PRs in last ${days} days`, totalOpenPRs, 'blue'));
-  badgeMarkdown.push(generateBadgeMarkdown(`Merged PRs in last ${days} days`, totalMergedPRs, 'blue'));
+  badgeMarkdown.push(
+    generateBadgeMarkdown(`Total repositories`, repoCount, "blue"),
+  );
+  badgeMarkdown.push(
+    generateBadgeMarkdown(
+      `Open PRs in last ${days} days`,
+      totalOpenPRs,
+      "blue",
+    ),
+  );
+  badgeMarkdown.push(
+    generateBadgeMarkdown(
+      `Merged PRs in last ${days} days`,
+      totalMergedPRs,
+      "blue",
+    ),
+  );
 
   return badgeMarkdown;
 };
 
-generateBadges().then(badgeMarkdown => {
-  core.info('');
-  let badges = badgeMarkdown.join(' ');
-  core.info(`Badge markdown: ${badges}`);
-  core.setOutput("badges", badges);
-}).catch(console.error);
+generateBadges()
+  .then((badgeMarkdown) => {
+    core.info("");
+    let badges = badgeMarkdown.join(" ");
+    core.info(`Badge markdown: ${badges}`);
+    core.setOutput("badges", badges);
+  })
+  .catch(console.error);
