@@ -32,14 +32,14 @@ const token = argv.token || core.getInput("token");
 const days = argv.days || core.getInput("days");
 const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl");
 
-function requireInput(input, name) {
+function requireInput(input) {
   if (!input) {
-    throw new Error(`${name} is required`);
+    throw new Error(`${input} is required`);
   }
 }
 
-requireInput(organization, "Organization");
-requireInput(token, "Token");
+requireInput(organization);
+requireInput(token);
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
