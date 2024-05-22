@@ -13,6 +13,17 @@ The action runs and generates an output with the markdown badges. There is a sam
 ```
 
 ```yaml
+name: update-organization-readme-badges
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # runs daily at 07:00
+  workflow_dispatch:
+
+jobs:
+  generate-badges:
+    runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
   
