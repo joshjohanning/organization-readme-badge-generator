@@ -1,15 +1,38 @@
-import yargs from "yargs/yargs";
-import { hideBin } from "yargs/helpers";
 import core from "@actions/core";
 import { graphql } from "@octokit/graphql";
-const argv = yargs(hideBin(process.argv)).argv;
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+
+const argv = yargs(hideBin(process.argv))
+  .option('organization', {
+    describe: 'The organization',
+    type: 'string',
+    demandOption: true
+  })
+  .option('token', {
+    describe: 'The token',
+    type: 'string',
+    demandOption: true
+  })
+  .option('days', {
+    describe: 'The number of days',
+    type: 'number',
+    default: 30
+  })
+  .option('graphqlUrl', {
+    describe: 'The GraphQL URL',
+    type: 'string',
+    default: 'https://api.github.com/graphql'
+  })
+  .help()
+  .parse();
 
 // run via `node src/index.mjs --organization=joshjohanning-org --token=ghp_abc
 
-const organization = argv.organization || core.getInput("organization", { required: true });
-const token = argv.token || core.getInput("token", { required: true });
-const days = argv.days || core.getInput("days", { required: false }) || 30;
-const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl", { required: false }) || 'https://api.github.com/graphql';
+const organization = argv.organization || core.getInput("organization");
+const token = argv.token || core.getInput("token");
+const days = argv.days || core.getInput("days");
+const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl");
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
