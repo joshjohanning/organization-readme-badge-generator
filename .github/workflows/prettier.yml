@@ -16,10 +16,26 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Check npm version compatibility
+        uses: joshjohanning/npm-version-check-action@v1
 
       - name: Run prettier
         run: npm run format:check
+
+      - name: Package the action
+        run: npm run package
+
+      - name: Validate action.yml
+        run: |
+          # Basic validation that action.yml is valid YAML
+          if command -v yq &> /dev/null; then
+            yq eval '.' action.yml > /dev/null
+          else
+            # Fallback to python yaml check
+            python -c "import yaml; yaml.safe_load(open('action.yml'))"
+          fi
