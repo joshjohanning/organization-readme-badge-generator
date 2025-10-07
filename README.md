@@ -1,5 +1,7 @@
 # organization-readme-badge-generator
 
+[![Publish GitHub Action](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml)
+
 An action to create markdown badges for your GitHub organization's README.md file using Shields.io.
 
 ## Example
