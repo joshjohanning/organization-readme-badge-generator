@@ -1,65 +1,72 @@
-import core from "@actions/core";
-import { graphql } from "@octokit/graphql";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
+import core from '@actions/core';
+import { graphql } from '@octokit/graphql';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
 const argv = yargs(hideBin(process.argv))
-  .option("organization", {
-    describe: "The organization",
-    type: "string",
+  .option('organization', {
+    describe: 'The organization',
+    type: 'string'
   })
-  .option("token", {
-    describe: "The token",
-    type: "string",
+  .option('token', {
+    describe: 'The token',
+    type: 'string'
   })
-  .option("days", {
-    describe: "The number of days",
-    type: "number",
-    default: 30,
+  .option('days', {
+    describe: 'The number of days',
+    type: 'number',
+    default: 30
   })
-  .option("graphqlUrl", {
-    describe: "The GraphQL URL",
-    type: "string",
-    default: "https://api.github.com/graphql",
+  .option('graphqlUrl', {
+    describe: 'The GraphQL URL',
+    type: 'string',
+    default: 'https://api.github.com/graphql'
   })
   .help()
   .parse();
 
-// run via `node src/index.mjs --organization=joshjohanning-org --token=ghp_abc
+// run via `node src/index.js --organization=joshjohanning-org --token=ghp_abc
 
-const organization = argv.organization || core.getInput("organization");
-const token = argv.token || core.getInput("token");
-const days = argv.days || core.getInput("days");
-const graphqlUrl = argv.graphqlUrl || core.getInput("graphqlUrl");
+let organization;
+let token;
+let days;
+let graphqlUrl;
+let graphqlWithAuth;
 
-function requireInput(input) {
-  if (!input) {
-    throw new Error(`${input} is required`);
+// Only initialize these when running directly (not during tests)
+if (process.env.NODE_ENV !== 'test') {
+  organization = argv.organization || core.getInput('organization');
+  token = argv.token || core.getInput('token');
+  days = argv.days || core.getInput('days');
+  graphqlUrl = argv.graphqlUrl || core.getInput('graphqlUrl');
+
+  function requireInput(input) {
+    if (!input) {
+      throw new Error(`${input} is required`);
+    }
   }
+
+  requireInput(organization);
+  requireInput(token);
+
+  graphqlWithAuth = graphql.defaults({
+    headers: {
+      authorization: `token ${token}`,
+      baseUrl: graphqlUrl
+    }
+  });
 }
 
-requireInput(organization);
-requireInput(token);
-
-const graphqlWithAuth = graphql.defaults({
-  headers: {
-    authorization: `token ${token}`,
-    baseUrl: graphqlUrl,
-  },
-});
-
-let badgeMarkdown = [];
-
-const generateBadgeMarkdown = (text, number, color) => {
+export const generateBadgeMarkdown = (text, number, color) => {
   // TODO: use native library? https://www.npmjs.com/package/badge-maker
-  const baseURL = "https://img.shields.io/static/v1";
+  const baseURL = 'https://img.shields.io/static/v1';
   const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
   const markdownImage = `![${text}](${url})`;
   return markdownImage;
 };
 
-const getRepositoryCount = async (org) => {
-  const { organization } = await graphqlWithAuth(
+export const getRepositoryCount = async (org, graphqlClient = graphqlWithAuth) => {
+  const { organization: orgData } = await graphqlClient(
     `
     query ($organization: String!) {
       organization (login: $organization) {
@@ -69,19 +76,19 @@ const getRepositoryCount = async (org) => {
       }
     }
   `,
-    { organization: org },
+    { organization: org }
   );
 
-  return organization.repositories.totalCount;
+  return orgData.repositories.totalCount;
 };
 
-const getRepositories = async (org) => {
+export const getRepositories = async (org, graphqlClient = graphqlWithAuth) => {
   let endCursor;
   let hasNextPage = true;
   const repositories = [];
 
   while (hasNextPage) {
-    const { organization } = await graphqlWithAuth(
+    const { organization: orgData } = await graphqlClient(
       `
       query ($organization: String!, $after: String) {
         organization (login: $organization) {
@@ -97,28 +104,26 @@ const getRepositories = async (org) => {
         }
       }
     `,
-      { organization: org, after: endCursor },
+      { organization: org, after: endCursor }
     );
 
-    repositories.push(
-      ...organization.repositories.nodes.map((repo) => repo.name),
-    );
+    repositories.push(...orgData.repositories.nodes.map(repo => repo.name));
 
-    hasNextPage = organization.repositories.pageInfo.hasNextPage;
-    endCursor = organization.repositories.pageInfo.endCursor;
+    hasNextPage = orgData.repositories.pageInfo.hasNextPage;
+    endCursor = orgData.repositories.pageInfo.endCursor;
   }
 
   return repositories;
 };
 
-const getPullRequestsCount = async (org, repo, prFilterDate) => {
+export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClient = graphqlWithAuth) => {
   let endCursor;
   let hasNextPage = true;
-  let total = 0,
-    merged = 0;
+  let total = 0;
+  let merged = 0;
 
   while (hasNextPage) {
-    const { repository } = await graphqlWithAuth(
+    const { repository } = await graphqlClient(
       `
       query ($org: String!, $repo: String!, $after: String) {
         repository(owner: $org, name: $repo) {
@@ -136,20 +141,18 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
         }
       }
     `,
-      { org, repo, after: endCursor },
+      { org, repo, after: endCursor }
     );
 
     const pullRequests = repository.pullRequests.nodes;
 
     const openPullRequests = pullRequests.filter(
-      (pr) => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate,
+      pr => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate
     );
     total += openPullRequests.length;
 
     const mergedPRs = pullRequests.filter(
-      (pr) =>
-        pr.state === "MERGED" &&
-        new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate,
+      pr => pr.state === 'MERGED' && new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate
     );
     merged += mergedPRs.length;
 
@@ -159,15 +162,19 @@ const getPullRequestsCount = async (org, repo, prFilterDate) => {
 
   return {
     total,
-    merged,
+    merged
   };
 };
 
-const generateBadges = async () => {
+export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlClient) => {
+  const org = orgParam || organization;
+  const numDays = daysParam || days;
+  const client = graphqlClient || graphqlWithAuth;
+
   try {
     // repo count
-    const repos = await getRepositories(organization);
-    const repoCount = await getRepositoryCount(organization);
+    const repos = await getRepositories(org, client);
+    const repoCount = await getRepositoryCount(org, client);
     core.info(`Total repositories: ${repoCount}`);
 
     // pull requests
@@ -175,57 +182,45 @@ const generateBadges = async () => {
     let totalMergedPRs = 0;
 
     const date = new Date();
-    date.setUTCDate(date.getUTCDate() - days);
+    date.setUTCDate(date.getUTCDate() - numDays);
     const prFilterDate = date.toISOString();
     core.debug(`Filtering PRs created after ${prFilterDate}`);
 
     for (const repo of repos) {
-      const { total, merged } = await getPullRequestsCount(
-        organization,
-        repo,
-        prFilterDate,
-      );
+      const { total, merged } = await getPullRequestsCount(org, repo, prFilterDate, client);
       totalOpenPRs += total;
       totalMergedPRs += merged;
     }
 
-    core.info(
-      `Total open pull requests in last ${days} days for ${organization}: ${totalOpenPRs}`,
-    );
-    core.info(
-      `Total merged pull requests in last ${days} days for ${organization}: ${totalMergedPRs}`,
-    );
+    core.info(`Total open pull requests in last ${numDays} days for ${org}: ${totalOpenPRs}`);
+    core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
 
-    badgeMarkdown.push(
-      generateBadgeMarkdown(`Total repositories`, repoCount, "blue"),
-    );
-    badgeMarkdown.push(
-      generateBadgeMarkdown(
-        `Open PRs in last ${days} days`,
-        totalOpenPRs,
-        "blue",
-      ),
-    );
-    badgeMarkdown.push(
-      generateBadgeMarkdown(
-        `Merged PRs in last ${days} days`,
-        totalMergedPRs,
-        "blue",
-      ),
-    );
+    const badges = [
+      generateBadgeMarkdown(`Total repositories`, repoCount, 'blue'),
+      generateBadgeMarkdown(`Open PRs in last ${numDays} days`, totalOpenPRs, 'blue'),
+      generateBadgeMarkdown(`Merged PRs in last ${numDays} days`, totalMergedPRs, 'blue')
+    ];
 
-    return badgeMarkdown;
+    return badges;
   } catch (error) {
     core.error(error.stack);
     process.exit(1);
   }
 };
 
-generateBadges()
-  .then((badgeMarkdown) => {
-    core.info("");
-    let badges = badgeMarkdown.join(" ");
-    core.info(`Badge markdown: ${badges}`);
-    core.setOutput("badges", badges);
-  })
-  .catch(console.error);
+// Only run when executed directly (not when imported for tests)
+if (process.env.NODE_ENV !== 'test') {
+  (async () => {
+    try {
+      const badges = await generateBadges();
+      core.info('');
+      const badgesMarkdown = badges.join(' ');
+      core.info(`Badge markdown: ${badgesMarkdown}`);
+      core.setOutput('badges', badgesMarkdown);
+    } catch (error) {
+      core.error(`Failed to generate badges: ${error.message}`);
+      core.error(error.stack);
+      process.exit(1);
+    }
+  })();
+}
