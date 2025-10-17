@@ -67,11 +67,17 @@ if (process.env.NODE_ENV !== 'test') {
   validateRequiredInput(token, 'token');
 
   graphqlWithAuth = graphql.defaults({
-    baseUrl: graphqlUrl,
     headers: {
       authorization: `token ${token}`
     }
   });
+
+  // Set baseUrl if a custom GraphQL URL is provided
+  if (graphqlUrl && graphqlUrl !== 'https://api.github.com/graphql') {
+    graphqlWithAuth = graphqlWithAuth.defaults({
+      baseUrl: graphqlUrl
+    });
+  }
 }
 
 export const generateBadgeMarkdown = (text, number, badgeColor, badgeLabelColor) => {
