@@ -385,4 +385,49 @@ describe('generateBadges', () => {
     expect(badges[1]).toContain('Open PRs in last 30 days');
     expect(badges[1]).toContain('data:image/svg+xml;base64,');
   });
+
+  it('should handle errors in generateBadges', async () => {
+    const mockGraphqlClient = jest.fn().mockRejectedValue(new Error('GraphQL API Error'));
+
+    // Mock process.exit to prevent test from exiting
+    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+    await generateBadges('test-org', 'token', 30, mockGraphqlClient, 'blue', '555');
+
+    expect(core.error).toHaveBeenCalled();
+    expect(mockExit).toHaveBeenCalledWith(1);
+
+    mockExit.mockRestore();
+  });
+
+  it('should use default colors when not provided', async () => {
+    const mockGraphqlClient = jest
+      .fn()
+      .mockResolvedValueOnce({
+        organization: {
+          repositories: {
+            nodes: [{ name: 'repo1' }],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        organization: {
+          repositories: { totalCount: 1 }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+
+    const badges = await generateBadges('test-org', 'token', 30, mockGraphqlClient);
+
+    expect(badges).toHaveLength(3);
+    expect(badges[0]).toContain('data:image/svg+xml;base64,');
+  });
 });
