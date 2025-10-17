@@ -298,14 +298,6 @@ describe('generateBadges', () => {
           }
         }
       })
-      // getRepositoryCount call
-      .mockResolvedValueOnce({
-        organization: {
-          repositories: {
-            totalCount: 2
-          }
-        }
-      })
       // getPullRequestsCount for repo1
       .mockResolvedValueOnce({
         repository: {
@@ -383,9 +375,13 @@ describe('generateBadges', () => {
     const mockGraphqlClient = jest.fn().mockRejectedValue(new Error('GraphQL API Error'));
 
     // Mock process.exit to prevent test from exiting
-    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
 
-    await generateBadges('test-org', 'token', 30, mockGraphqlClient, 'blue', '555');
+    await expect(generateBadges('test-org', 'token', 30, mockGraphqlClient, 'blue', '555')).rejects.toThrow(
+      'process.exit called'
+    );
 
     expect(core.error).toHaveBeenCalled();
     expect(mockExit).toHaveBeenCalledWith(1);
@@ -402,11 +398,6 @@ describe('generateBadges', () => {
             nodes: [{ name: 'repo1' }],
             pageInfo: { endCursor: null, hasNextPage: false }
           }
-        }
-      })
-      .mockResolvedValueOnce({
-        organization: {
-          repositories: { totalCount: 1 }
         }
       })
       .mockResolvedValueOnce({
