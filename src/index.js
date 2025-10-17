@@ -2,7 +2,6 @@ import core from '@actions/core';
 import { graphql } from '@octokit/graphql';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { makeBadge } from 'badge-maker';
 
 const argv = yargs(hideBin(process.argv))
   .option('organization', {
@@ -81,17 +80,14 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export const generateBadgeMarkdown = (text, number, badgeColor, badgeLabelColor) => {
-  const svgBadge = makeBadge({
-    label: text,
-    message: String(number),
-    color: badgeColor,
-    labelColor: badgeLabelColor
-  });
+  // Use shields.io for GitHub-compatible badge rendering
+  const encodedLabel = encodeURIComponent(text);
+  const encodedMessage = encodeURIComponent(number);
+  const encodedColor = encodeURIComponent(badgeColor);
+  const encodedLabelColor = encodeURIComponent(badgeLabelColor);
 
-  // Convert SVG to base64 data URI for markdown
-  const base64Badge = Buffer.from(svgBadge).toString('base64');
-  const dataUri = `data:image/svg+xml;base64,${base64Badge}`;
-  const markdownImage = `![${text}](${dataUri})`;
+  const badgeUrl = `https://img.shields.io/badge/${encodedLabel}-${encodedMessage}-${encodedColor}?labelColor=${encodedLabelColor}`;
+  const markdownImage = `![${text}](${badgeUrl})`;
   return markdownImage;
 };
 
