@@ -42,6 +42,7 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@octokit/graphql": "^9.0.2",
+    "badge-maker": "^5.0.2",
     "yargs": "^17.7.2"
   },
   "devDependencies": {

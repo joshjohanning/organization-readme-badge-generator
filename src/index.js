@@ -2,6 +2,7 @@ import core from '@actions/core';
 import { graphql } from '@octokit/graphql';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { makeBadge } from 'badge-maker';
 
 const argv = yargs(hideBin(process.argv))
   .option('organization', {
@@ -58,10 +59,16 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export const generateBadgeMarkdown = (text, number, color) => {
-  // TODO: use native library? https://www.npmjs.com/package/badge-maker
-  const baseURL = 'https://img.shields.io/static/v1';
-  const url = `${baseURL}?label=${encodeURIComponent(text)}&message=${encodeURIComponent(number)}&color=${encodeURIComponent(color)}`;
-  const markdownImage = `![${text}](${url})`;
+  const svgBadge = makeBadge({
+    label: text,
+    message: String(number),
+    color: color
+  });
+
+  // Convert SVG to base64 data URI for markdown
+  const base64Badge = Buffer.from(svgBadge).toString('base64');
+  const dataUri = `data:image/svg+xml;base64,${base64Badge}`;
+  const markdownImage = `![${text}](${dataUri})`;
   return markdownImage;
 };
 

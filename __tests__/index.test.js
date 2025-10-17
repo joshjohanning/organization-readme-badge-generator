@@ -15,19 +15,22 @@ jest.spyOn(core, 'error').mockImplementation(() => {});
 jest.spyOn(core, 'setOutput').mockImplementation(() => {});
 
 describe('generateBadgeMarkdown', () => {
-  it('should generate correct markdown badge with encoded parameters', () => {
+  it('should generate correct markdown badge with SVG data URI', () => {
     const result = generateBadgeMarkdown('Test Label', 42, 'blue');
-    expect(result).toBe('![Test Label](https://img.shields.io/static/v1?label=Test%20Label&message=42&color=blue)');
+    expect(result).toContain('![Test Label](data:image/svg+xml;base64,');
+    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 
   it('should handle special characters in label', () => {
     const result = generateBadgeMarkdown('Test & Label', 10, 'green');
-    expect(result).toContain('Test%20%26%20Label');
+    expect(result).toContain('![Test & Label](data:image/svg+xml;base64,');
+    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 
   it('should handle numeric message', () => {
     const result = generateBadgeMarkdown('Count', 0, 'red');
-    expect(result).toContain('message=0');
+    expect(result).toContain('![Count](data:image/svg+xml;base64,');
+    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 });
 
@@ -337,10 +340,9 @@ describe('generateBadges', () => {
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('Total repositories');
-    expect(badges[0]).toContain('message=2');
+    expect(badges[0]).toContain('data:image/svg+xml;base64,');
     expect(badges[1]).toContain('Open PRs in last 30 days');
     expect(badges[2]).toContain('Merged PRs in last 30 days');
-
     expect(core.info).toHaveBeenCalledWith('Total repositories: 2');
     expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Total open pull requests'));
     expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Total merged pull requests'));
@@ -373,8 +375,8 @@ describe('generateBadges', () => {
     const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient);
 
     expect(badges).toHaveLength(3);
-    expect(badges[0]).toContain('message=0');
+    expect(badges[0]).toContain('data:image/svg+xml;base64,');
     expect(badges[1]).toContain('Open PRs in last 30 days');
-    expect(badges[1]).toContain('message=0');
+    expect(badges[1]).toContain('data:image/svg+xml;base64,');
   });
 });
