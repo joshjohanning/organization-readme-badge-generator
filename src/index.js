@@ -171,7 +171,7 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
     const pullRequests = repository.pullRequests.nodes;
 
     const openPullRequests = pullRequests.filter(pr => new Date(pr.createdAt) >= new Date(prFilterDate));
-    total += openPullRequests.length;
+      pr => pr.state === 'OPEN' && new Date(pr.createdAt) >= new Date(prFilterDate)
 
     const mergedPRs = pullRequests.filter(
       pr => pr.state === 'MERGED' && new Date(pr.mergedAt) >= new Date(prFilterDate)
@@ -193,14 +193,22 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
   const numDays = daysParam || days;
   const client = graphqlClient || graphqlWithAuth;
   const msgColor = badgeColor || color || 'blue';
-  const lblColor = badgeLabelColor || labelColor || '555';
+  let client = graphqlClient || graphqlWithAuth;
+  if (!client && tokenParam) {
+    client = graphql.defaults({
+      headers: {
+        authorization: `token ${tokenParam}`
+      },
+      baseUrl: argv.graphqlUrl || 'https://api.github.com/graphql'
+    });
+  }
 
   try {
     // repo count
     const repos = await getRepositories(org, client);
     const repoCount = await getRepositoryCount(org, client);
     core.info(`Total repositories: ${repoCount}`);
-
+    const repoCount = repos.length;
     // pull requests
     let totalOpenPRs = 0;
     let totalMergedPRs = 0;
@@ -218,12 +226,12 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
 
     core.info(`Total open pull requests in last ${numDays} days for ${org}: ${totalOpenPRs}`);
     core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
+    core.info(`Total pull requests created in last ${numDays} days for ${org}: ${totalOpenPRs}`);
+    core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
 
     const badges = [
       generateBadgeMarkdown(`Total repositories`, repoCount, msgColor, lblColor),
-      generateBadgeMarkdown(`Open PRs in last ${numDays} days`, totalOpenPRs, msgColor, lblColor),
-      generateBadgeMarkdown(`Merged PRs in last ${numDays} days`, totalMergedPRs, msgColor, lblColor)
-    ];
+      generateBadgeMarkdown(`PRs created in last ${numDays} days`, totalOpenPRs, msgColor, lblColor),
 
     return badges;
   } catch (error) {
