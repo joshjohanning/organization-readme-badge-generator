@@ -68,7 +68,7 @@ jobs:
           organization: ${{ github.repository_owner }}
           token: ${{ steps.app-token.outputs.token }} # recommend to use a GitHub App and not a PAT
           color: blue # optional, default is blue
-          label_color: '555' # optional, default is 555 (quote to ensure it's treated as a string)
+          label_color: '555' # optional, default is 555
           days: 30 # optional, default is 30
 
       - name: write to job summary
