@@ -16,28 +16,24 @@ jest.spyOn(core, 'error').mockImplementation(() => {});
 jest.spyOn(core, 'setOutput').mockImplementation(() => {});
 
 describe('generateBadgeMarkdown', () => {
-  it('should generate correct markdown badge with SVG data URI', () => {
+  it('should generate correct markdown badge with shields.io URL', () => {
     const result = generateBadgeMarkdown('Test Label', 42, 'blue', '555');
-    expect(result).toContain('![Test Label](data:image/svg+xml;base64,');
-    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
+    expect(result).toBe('![Test Label](https://img.shields.io/badge/Test%20Label-42-blue?labelColor=555)');
   });
 
   it('should handle special characters in label', () => {
     const result = generateBadgeMarkdown('Test & Label', 10, 'green', '555');
-    expect(result).toContain('![Test & Label](data:image/svg+xml;base64,');
-    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
+    expect(result).toBe('![Test & Label](https://img.shields.io/badge/Test%20%26%20Label-10-green?labelColor=555)');
   });
 
   it('should handle numeric message', () => {
     const result = generateBadgeMarkdown('Count', 0, 'red', '555');
-    expect(result).toContain('![Count](data:image/svg+xml;base64,');
-    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
+    expect(result).toBe('![Count](https://img.shields.io/badge/Count-0-red?labelColor=555)');
   });
 
   it('should use custom label color', () => {
     const result = generateBadgeMarkdown('Custom', 5, 'blue', 'red');
-    expect(result).toContain('![Custom](data:image/svg+xml;base64,');
-    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
+    expect(result).toBe('![Custom](https://img.shields.io/badge/Custom-5-blue?labelColor=red)');
   });
 });
 
@@ -339,7 +335,7 @@ describe('generateBadges', () => {
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('Total repositories');
-    expect(badges[0]).toContain('data:image/svg+xml;base64,');
+    expect(badges[0]).toContain('https://img.shields.io/badge/');
     expect(badges[1]).toContain('PRs created in last 30 days');
     expect(badges[2]).toContain('Merged PRs in last 30 days');
     expect(core.info).toHaveBeenCalledWith('Total repositories: 2');
@@ -366,9 +362,9 @@ describe('generateBadges', () => {
     const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient, 'blue', '555');
 
     expect(badges).toHaveLength(3);
-    expect(badges[0]).toContain('data:image/svg+xml;base64,');
+    expect(badges[0]).toContain('https://img.shields.io/badge/');
     expect(badges[1]).toContain('PRs created in last 30 days');
-    expect(badges[1]).toContain('data:image/svg+xml;base64,');
+    expect(badges[1]).toContain('https://img.shields.io/badge/');
   });
 
   it('should handle errors in generateBadges', async () => {
@@ -412,7 +408,7 @@ describe('generateBadges', () => {
     const badges = await generateBadges('test-org', 'token', 30, mockGraphqlClient);
 
     expect(badges).toHaveLength(3);
-    expect(badges[0]).toContain('data:image/svg+xml;base64,');
+    expect(badges[0]).toContain('https://img.shields.io/badge/');
   });
 });
 
