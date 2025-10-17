@@ -348,10 +348,10 @@ describe('generateBadges', () => {
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('Total repositories');
     expect(badges[0]).toContain('data:image/svg+xml;base64,');
-    expect(badges[1]).toContain('Open PRs in last 30 days');
+    expect(badges[1]).toContain('PRs created in last 30 days');
     expect(badges[2]).toContain('Merged PRs in last 30 days');
     expect(core.info).toHaveBeenCalledWith('Total repositories: 2');
-    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Total open pull requests'));
+    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Total pull requests created'));
     expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Total merged pull requests'));
   });
 
@@ -369,21 +369,13 @@ describe('generateBadges', () => {
             }
           }
         }
-      })
-      // getRepositoryCount call
-      .mockResolvedValueOnce({
-        organization: {
-          repositories: {
-            totalCount: 0
-          }
-        }
       });
 
     const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient, 'blue', '555');
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('data:image/svg+xml;base64,');
-    expect(badges[1]).toContain('Open PRs in last 30 days');
+    expect(badges[1]).toContain('PRs created in last 30 days');
     expect(badges[1]).toContain('data:image/svg+xml;base64,');
   });
 
