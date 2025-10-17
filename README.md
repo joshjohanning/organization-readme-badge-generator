@@ -1,8 +1,12 @@
 # organization-readme-badge-generator
 
+[![GitHub release](https://img.shields.io/github/release/joshjohanning/organization-readme-badge-generator.svg?logo=github&labelColor=333)](https://github.com/joshjohanning/organization-readme-badge-generator/releases)
+[![GitHub marketplace](https://img.shields.io/badge/marketplace-github--organization--readme--badge--generator-blue?logo=github&labelColor=333)](https://github.com/marketplace/actions/github-organization-readme-badge-generator)
+[![CI](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/ci.yml)
 [![Publish GitHub Action](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml)
+![Coverage](./badges/coverage.svg)
 
-An action to create markdown badges for your GitHub organization's README.md file using Shields.io.
+An action to create markdown badges for your GitHub organization's README.md file by generating badges locally with badge-maker and embedding them as data URIs.
 
 ## Example
 
@@ -37,7 +41,7 @@ name: update-organization-readme-badges
 
 on:
   schedule:
-    - cron: "0 7 * * *" # runs daily at 07:00
+    - cron: '0 7 * * *' # runs daily at 07:00
   workflow_dispatch:
 
 permissions:
