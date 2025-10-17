@@ -6,7 +6,7 @@
 [![Publish GitHub Action](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml)
 ![Coverage](./badges/coverage.svg)
 
-An action to create markdown badges for your GitHub organization's README.md file by generating badges locally with badge-maker and embedding them as data URIs.
+An action to create markdown badges for your GitHub organization's README.md file using shields.io.
 
 ## Example
 
@@ -14,7 +14,7 @@ An action to create markdown badges for your GitHub organization's README.md fil
 
 > # my-org-name
 >
-> ![Total repositories](https://img.shields.io/static/v1?label=Total%20repositories&message=341&color=blue) ![Open PRs in last 30 days](https://img.shields.io/static/v1?label=Open%20PRs%20in%20last%2030%20days&message=29&color=blue) ![Merged PRs in last 30 days](https://img.shields.io/static/v1?label=Merged%20PRs%20in%20last%2030%20days&message=2&color=blue)
+> ![Total repositories](https://img.shields.io/badge/Total%20repositories-341-blue?labelColor=555) ![PRs created in last 30 days](https://img.shields.io/badge/PRs%20created%20in%20last%2030%20days-29-blue?labelColor=555) ![Merged PRs in last 30 days](https://img.shields.io/badge/Merged%20PRs%20in%20last%2030%20days-12-blue?labelColor=555)
 
 <!-- end organization badges -->
 
@@ -67,6 +67,9 @@ jobs:
         with:
           organization: ${{ github.repository_owner }}
           token: ${{ steps.app-token.outputs.token }} # recommend to use a GitHub App and not a PAT
+          color: blue # optional, default is blue
+          label_color: '555' # optional, default is 555 (quote to ensure it's treated as a string)
+          days: 30 # optional, default is 30
 
       - name: write to job summary
         run: |
@@ -103,4 +106,41 @@ jobs:
             git commit -m "docs: update organization readme badges"
             git push
           fi
+```
+
+## Inputs
+
+| Input          | Description                                                                                            | Required | Default                          |
+| -------------- | ------------------------------------------------------------------------------------------------------ | -------- | -------------------------------- |
+| `organization` | The GitHub organization to query                                                                       | Yes      | `${{ github.repository_owner }}` |
+| `token`        | PAT or GitHub App token to query the GitHub API                                                        | Yes      | `${{ github.token }}`            |
+| `days`         | Number of days to look back for pull request statistics                                                | No       | `30`                             |
+| `color`        | Badge color for the message (right side). Supports named colors (blue, green, red, etc.) or hex colors | No       | `blue`                           |
+| `label_color`  | Badge color for the label (left side). Supports named colors or hex colors (quote hex values)          | No       | `555`                            |
+| `graphql_url`  | The URL to the GitHub GraphQL API endpoint (for GitHub Enterprise)                                     | No       | `https://api.github.com/graphql` |
+
+## Outputs
+
+| Output   | Description                                      |
+| -------- | ------------------------------------------------ |
+| `badges` | The badge markdown to add to your README.md file |
+
+## Color Options
+
+The `color` and `label_color` parameters support:
+
+- **Named colors**: `brightgreen`, `green`, `yellowgreen`, `yellow`, `orange`, `red`, `blue`, `lightgrey`, etc.
+- **Hex colors**: Use quotes for hex values, e.g., `'333'`, `'ff69b4'`, `'007ec6'`
+- **RGB colors**: e.g., `'rgb(255,0,0)'`
+
+Examples:
+
+```yaml
+color: blue
+label_color: '333' # dark gray
+```
+
+```yaml
+color: brightgreen
+label_color: '555' # medium gray
 ```
