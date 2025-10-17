@@ -41,7 +41,7 @@ name: update-organization-readme-badges
 
 on:
   schedule:
-    - cron: "0 7 * * *" # runs daily at 07:00
+    - cron: '0 7 * * *' # runs daily at 07:00
   workflow_dispatch:
 
 permissions:
