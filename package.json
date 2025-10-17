@@ -19,8 +19,9 @@
     "Organization Readme",
     "Badges"
   ],
+  "type": "module",
   "exports": {
-    ".": "./dist/index.mjs"
+    ".": "./dist/index.js"
   },
   "engines": {
     "node": ">=20"
