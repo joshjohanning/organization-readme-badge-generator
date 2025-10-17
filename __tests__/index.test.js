@@ -435,19 +435,19 @@ describe('generateBadges', () => {
 
 describe('validateRequiredInput', () => {
   it('should return value when input is provided', () => {
-    const result = validateRequiredInput('organization', 'test-org');
+    const result = validateRequiredInput('test-org', 'organization');
     expect(result).toBe('test-org');
   });
 
   it('should throw error when input is missing', () => {
-    expect(() => validateRequiredInput('organization', '')).toThrow('organization is required');
+    expect(() => validateRequiredInput('', 'organization')).toThrow('organization is required');
   });
 
   it('should throw error when input is null', () => {
-    expect(() => validateRequiredInput('token', null)).toThrow('token is required');
+    expect(() => validateRequiredInput(null, 'token')).toThrow('token is required');
   });
 
   it('should throw error when input is undefined', () => {
-    expect(() => validateRequiredInput('days', undefined)).toThrow('days is required');
+    expect(() => validateRequiredInput(undefined, 'days')).toThrow('days is required');
   });
 });

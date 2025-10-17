@@ -47,11 +47,11 @@ let labelColor;
 let graphqlWithAuth;
 
 // Exported function for validating required inputs
-export function validateRequiredInput(inputName, inputValue) {
-  if (!inputValue) {
-    throw new Error(`${inputName} is required`);
+export function validateRequiredInput(input, label) {
+  if (!input) {
+    throw new Error(`${label} is required`);
   }
-  return inputValue;
+  return input;
 }
 
 // Only initialize these when running directly (not during tests)
@@ -63,8 +63,8 @@ if (process.env.NODE_ENV !== 'test') {
   color = argv.color || core.getInput('color') || 'blue';
   labelColor = argv.labelColor || core.getInput('label_color') || '555';
 
-  validateRequiredInput('organization', organization);
-  validateRequiredInput('token', token);
+  validateRequiredInput(organization, 'organization');
+  validateRequiredInput(token, 'token');
 
   graphqlWithAuth = graphql.defaults({
     baseUrl: graphqlUrl,
@@ -170,9 +170,7 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
 
     const pullRequests = repository.pullRequests.nodes;
 
-    const openPullRequests = pullRequests.filter(
-      pr => new Date(pr.createdAt) >= new Date(prFilterDate)
-    );
+    const openPullRequests = pullRequests.filter(pr => new Date(pr.createdAt) >= new Date(prFilterDate));
     total += openPullRequests.length;
 
     const mergedPRs = pullRequests.filter(
