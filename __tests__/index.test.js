@@ -5,7 +5,8 @@ import {
   getRepositoryCount,
   getRepositories,
   getPullRequestsCount,
-  generateBadges
+  generateBadges,
+  validateRequiredInput
 } from '../src/index.js';
 
 // Mock @actions/core
@@ -429,5 +430,24 @@ describe('generateBadges', () => {
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('data:image/svg+xml;base64,');
+  });
+});
+
+describe('validateRequiredInput', () => {
+  it('should return value when input is provided', () => {
+    const result = validateRequiredInput('organization', 'test-org');
+    expect(result).toBe('test-org');
+  });
+
+  it('should throw error when input is missing', () => {
+    expect(() => validateRequiredInput('organization', '')).toThrow('organization is required');
+  });
+
+  it('should throw error when input is null', () => {
+    expect(() => validateRequiredInput('token', null)).toThrow('token is required');
+  });
+
+  it('should throw error when input is undefined', () => {
+    expect(() => validateRequiredInput('days', undefined)).toThrow('days is required');
   });
 });

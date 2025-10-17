@@ -46,6 +46,14 @@ let color;
 let labelColor;
 let graphqlWithAuth;
 
+// Exported function for validating required inputs
+export function validateRequiredInput(inputName, inputValue) {
+  if (!inputValue) {
+    throw new Error(`${inputName} is required`);
+  }
+  return inputValue;
+}
+
 // Only initialize these when running directly (not during tests)
 if (process.env.NODE_ENV !== 'test') {
   organization = argv.organization || core.getInput('organization');
@@ -55,14 +63,8 @@ if (process.env.NODE_ENV !== 'test') {
   color = argv.color || core.getInput('color') || 'blue';
   labelColor = argv.labelColor || core.getInput('label_color') || '555';
 
-  function requireInput(input) {
-    if (!input) {
-      throw new Error(`${input} is required`);
-    }
-  }
-
-  requireInput(organization);
-  requireInput(token);
+  validateRequiredInput('organization', organization);
+  validateRequiredInput('token', token);
 
   graphqlWithAuth = graphql.defaults({
     headers: {
