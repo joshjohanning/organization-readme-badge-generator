@@ -6,7 +6,7 @@
 [![Publish GitHub Action](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml)
 ![Coverage](./badges/coverage.svg)
 
-An action to create markdown badges for your GitHub organization's README.md file using Shields.io.
+An action to create markdown badges for your GitHub organization's README.md file by generating badges locally with badge-maker and embedding them as data URIs.
 
 ## Example
 
