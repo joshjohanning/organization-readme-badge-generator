@@ -16,20 +16,26 @@ jest.spyOn(core, 'setOutput').mockImplementation(() => {});
 
 describe('generateBadgeMarkdown', () => {
   it('should generate correct markdown badge with SVG data URI', () => {
-    const result = generateBadgeMarkdown('Test Label', 42, 'blue');
+    const result = generateBadgeMarkdown('Test Label', 42, 'blue', '555');
     expect(result).toContain('![Test Label](data:image/svg+xml;base64,');
     expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 
   it('should handle special characters in label', () => {
-    const result = generateBadgeMarkdown('Test & Label', 10, 'green');
+    const result = generateBadgeMarkdown('Test & Label', 10, 'green', '555');
     expect(result).toContain('![Test & Label](data:image/svg+xml;base64,');
     expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 
   it('should handle numeric message', () => {
-    const result = generateBadgeMarkdown('Count', 0, 'red');
+    const result = generateBadgeMarkdown('Count', 0, 'red', '555');
     expect(result).toContain('![Count](data:image/svg+xml;base64,');
+    expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
+  });
+
+  it('should use custom label color', () => {
+    const result = generateBadgeMarkdown('Custom', 5, 'blue', 'red');
+    expect(result).toContain('![Custom](data:image/svg+xml;base64,');
     expect(result).toMatch(/data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+\)/);
   });
 });
@@ -336,7 +342,7 @@ describe('generateBadges', () => {
         }
       });
 
-    const badges = await generateBadges('test-org', 'token', 30, mockGraphqlClient);
+    const badges = await generateBadges('test-org', 'token', 30, mockGraphqlClient, 'blue', '555');
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('Total repositories');
@@ -372,7 +378,7 @@ describe('generateBadges', () => {
         }
       });
 
-    const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient);
+    const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient, 'blue', '555');
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('data:image/svg+xml;base64,');

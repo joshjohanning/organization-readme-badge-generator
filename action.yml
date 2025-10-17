@@ -22,6 +22,14 @@ inputs:
     description: 'For stats that have a date window, the number of days to query for'
     required: true
     default: '30'
+  color:
+    description: 'The color of the badge message (right side)'
+    required: false
+    default: 'blue'
+  label_color:
+    description: 'The color of the badge label (left side)'
+    required: false
+    default: '555'
 outputs:
   badges:
     description: 'The badge markdown to add to your README.md file'

@@ -23,6 +23,16 @@ const argv = yargs(hideBin(process.argv))
     type: 'string',
     default: 'https://api.github.com/graphql'
   })
+  .option('color', {
+    describe: 'The color of the badge message (right side)',
+    type: 'string',
+    default: 'blue'
+  })
+  .option('labelColor', {
+    describe: 'The color of the badge label (left side)',
+    type: 'string',
+    default: '555'
+  })
   .help()
   .parse();
 
@@ -32,6 +42,8 @@ let organization;
 let token;
 let days;
 let graphqlUrl;
+let color;
+let labelColor;
 let graphqlWithAuth;
 
 // Only initialize these when running directly (not during tests)
@@ -40,6 +52,8 @@ if (process.env.NODE_ENV !== 'test') {
   token = argv.token || core.getInput('token');
   days = argv.days || core.getInput('days');
   graphqlUrl = argv.graphqlUrl || core.getInput('graphqlUrl');
+  color = argv.color || core.getInput('color') || 'blue';
+  labelColor = argv.labelColor || core.getInput('label_color') || '555';
 
   function requireInput(input) {
     if (!input) {
@@ -58,11 +72,12 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-export const generateBadgeMarkdown = (text, number, color) => {
+export const generateBadgeMarkdown = (text, number, badgeColor, badgeLabelColor) => {
   const svgBadge = makeBadge({
     label: text,
     message: String(number),
-    color: color
+    color: badgeColor,
+    labelColor: badgeLabelColor
   });
 
   // Convert SVG to base64 data URI for markdown
@@ -173,10 +188,12 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
   };
 };
 
-export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlClient) => {
+export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlClient, badgeColor, badgeLabelColor) => {
   const org = orgParam || organization;
   const numDays = daysParam || days;
   const client = graphqlClient || graphqlWithAuth;
+  const msgColor = badgeColor || color || 'blue';
+  const lblColor = badgeLabelColor || labelColor || '555';
 
   try {
     // repo count
@@ -203,9 +220,9 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
     core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
 
     const badges = [
-      generateBadgeMarkdown(`Total repositories`, repoCount, 'blue'),
-      generateBadgeMarkdown(`Open PRs in last ${numDays} days`, totalOpenPRs, 'blue'),
-      generateBadgeMarkdown(`Merged PRs in last ${numDays} days`, totalMergedPRs, 'blue')
+      generateBadgeMarkdown(`Total repositories`, repoCount, msgColor, lblColor),
+      generateBadgeMarkdown(`Open PRs in last ${numDays} days`, totalOpenPRs, msgColor, lblColor),
+      generateBadgeMarkdown(`Merged PRs in last ${numDays} days`, totalMergedPRs, msgColor, lblColor)
     ];
 
     return badges;
