@@ -1,31 +1,39 @@
-name: "GitHub Organization Readme Badge Generator"
+name: 'GitHub Organization Readme Badge Generator'
 description: "An action to create markdown badges for your GitHub organization's README.md file"
 
 branding:
-  icon: "award"
-  color: "blue"
+  icon: 'award'
+  color: 'blue'
 
 inputs:
   organization:
-    description: "The GitHub organization to query"
+    description: 'The GitHub organization to query'
     required: true
-    default: "${{ github.repository_owner }}"
+    default: '${{ github.repository_owner }}'
   token:
-    description: "PAT or GitHub App token to query the GitHub API"
+    description: 'PAT or GitHub App token to query the GitHub API'
     required: true
-    default: "${{ github.token }}"
+    default: '${{ github.token }}'
   graphql_url:
-    description: "The URL to the GitHub GraphQL API endpoint"
+    description: 'The URL to the GitHub GraphQL API endpoint'
     required: true
-    default: "${{ github.graphql_url }}" # https://api.github.com/graphql
+    default: '${{ github.graphql_url }}' # https://api.github.com/graphql
   days:
-    description: "For stats that have a date window, the number of days to query for"
+    description: 'For stats that have a date window, the number of days to query for'
     required: true
-    default: "30"
+    default: '30'
+  color:
+    description: 'The color of the badge message (right side)'
+    required: false
+    default: 'blue'
+  label_color:
+    description: 'The color of the badge label (left side)'
+    required: false
+    default: '555'
 outputs:
   badges:
-    description: "The badge markdown to add to your README.md file"
+    description: 'The badge markdown to add to your README.md file'
 
 runs:
-  using: "node20"
-  main: "dist/index.mjs"
+  using: 'node20'
+  main: 'dist/index.js'
