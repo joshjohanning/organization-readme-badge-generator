@@ -59,7 +59,7 @@ if (process.env.NODE_ENV !== 'test') {
   organization = argv.organization || core.getInput('organization');
   token = argv.token || core.getInput('token');
   days = argv.days || core.getInput('days');
-  graphqlUrl = argv.graphqlUrl || core.getInput('graphqlUrl');
+  graphqlUrl = argv.graphqlUrl || core.getInput('graphql_url');
   color = argv.color || core.getInput('color') || 'blue';
   labelColor = argv.labelColor || core.getInput('label_color') || '555';
 
@@ -67,9 +67,9 @@ if (process.env.NODE_ENV !== 'test') {
   validateRequiredInput('token', token);
 
   graphqlWithAuth = graphql.defaults({
+    baseUrl: graphqlUrl,
     headers: {
-      authorization: `token ${token}`,
-      baseUrl: graphqlUrl
+      authorization: `token ${token}`
     }
   });
 }
@@ -171,12 +171,12 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
     const pullRequests = repository.pullRequests.nodes;
 
     const openPullRequests = pullRequests.filter(
-      pr => new Date(pr.createdAt).toISOString().slice(0, 10) >= prFilterDate
+      pr => new Date(pr.createdAt) >= new Date(prFilterDate)
     );
     total += openPullRequests.length;
 
     const mergedPRs = pullRequests.filter(
-      pr => pr.state === 'MERGED' && new Date(pr.mergedAt).toISOString().slice(0, 10) >= prFilterDate
+      pr => pr.state === 'MERGED' && new Date(pr.mergedAt) >= new Date(prFilterDate)
     );
     merged += mergedPRs.length;
 
