@@ -3,6 +3,12 @@ import { graphql } from '@octokit/graphql';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
+// Default values
+const DEFAULT_DAYS = 30;
+const DEFAULT_GRAPHQL_URL = 'https://api.github.com/graphql';
+const DEFAULT_COLOR = 'blue';
+const DEFAULT_LABEL_COLOR = '555';
+
 const argv = yargs(hideBin(process.argv))
   .option('organization', {
     describe: 'The organization',
@@ -13,25 +19,23 @@ const argv = yargs(hideBin(process.argv))
     type: 'string'
   })
   .option('days', {
-    describe: 'The number of days',
-    type: 'number',
-    default: 30
+    describe: `The number of days (default: ${DEFAULT_DAYS})`,
+    type: 'number'
   })
   .option('graphqlUrl', {
-    describe: 'The GraphQL URL',
-    type: 'string',
-    default: 'https://api.github.com/graphql'
+    describe: `The GraphQL URL (default: ${DEFAULT_GRAPHQL_URL})`,
+    type: 'string'
   })
   .option('color', {
-    describe: 'The color of the badge message (right side)',
-    type: 'string',
-    default: 'blue'
+    describe: `The color of the badge message (right side) (default: ${DEFAULT_COLOR})`,
+    type: 'string'
   })
   .option('labelColor', {
-    describe: 'The color of the badge label (left side)',
-    type: 'string',
-    default: '555'
+    describe: `The color of the badge label (left side) (default: ${DEFAULT_LABEL_COLOR})`,
+    type: 'string'
   })
+  .wrap(null) // Use full terminal width for better formatting
+  .version()
   .help()
   .parse();
 
@@ -57,8 +61,8 @@ export function validateRequiredInput(input, label) {
 if (process.env.NODE_ENV !== 'test') {
   organization = argv.organization || core.getInput('organization');
   token = argv.token || core.getInput('token');
-  days = argv.days || core.getInput('days');
-  graphqlUrl = argv.graphqlUrl || core.getInput('graphql_url');
+  days = argv.days || core.getInput('days') || 30;
+  graphqlUrl = argv.graphqlUrl || core.getInput('graphql_url') || 'https://api.github.com/graphql';
   color = argv.color || core.getInput('color') || 'blue';
   labelColor = argv.labelColor || core.getInput('label_color') || '555';
 
