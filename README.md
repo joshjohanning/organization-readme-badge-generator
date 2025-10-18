@@ -6,15 +6,28 @@
 [![Publish GitHub Action](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml/badge.svg)](https://github.com/joshjohanning/organization-readme-badge-generator/actions/workflows/publish.yml)
 ![Coverage](./badges/coverage.svg)
 
-An action to create markdown badges for your GitHub organization's README.md file using shields.io.
+An action to create SVG badge files for your GitHub organization's README.md file.
+
+## What's New in v2
+
+Version 2 introduces significant improvements:
+
+- **Local SVG Badges**: Uses `badge-maker` to generate local SVG files instead of relying on shields.io URLs
+- **Automated Commits**: Optionally commits badge files directly to your repository using the GitHub API (with verified commits)
+- **Automated README Updates**: Optionally updates your README.md file with badge references automatically
+- **No External Dependencies**: Badges are self-contained in your repository
+
+> **Note**: v2 is a breaking change. Badge output format has changed from shields.io URLs to local SVG file references.
 
 ## Example
+
+The action generates SVG badge files that can be committed to your repository and referenced in your README.
 
 <!-- start organization badges -->
 
 > # my-org-name
 >
-> ![Total repositories](https://img.shields.io/badge/Total%20repositories-341-blue?labelColor=555) ![PRs created in last 30 days](https://img.shields.io/badge/PRs%20created%20in%20last%2030%20days-29-blue?labelColor=555) ![Merged PRs in last 30 days](https://img.shields.io/badge/Merged%20PRs%20in%20last%2030%20days-12-blue?labelColor=555)
+> ![Total repositories](./badges/total-repositories.svg) ![PRs created in last 30 days](./badges/prs-created-in-last-30-days.svg) ![Merged PRs in last 30 days](./badges/merged-prs-in-last-30-days.svg)
 
 <!-- end organization badges -->
 
@@ -22,9 +35,94 @@ _Live example in my [`joshjohanning-org` org public README](https://github.com/j
 
 ## Usage
 
-### Prerequisite
+### V2 - Automated (Recommended)
 
-The action runs and generates an output with the markdown badges. There is a sample script provided that runs after the action to inserts the markdown in between two markers in the `profile/README.md` file ([example](https://github.com/joshjohanning-org/.github/blob/main/profile/README.md?plain=1)) and commit the changes if the file has changed.
+With v2, the action can automatically commit badge files and update your README using the GitHub API for verified commits. This is the simplest approach:
+
+```yml
+name: update-organization-readme-badges
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # runs daily at 07:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-badges:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: organization-readme-badge-generator
+        uses: joshjohanning/organization-readme-badge-generator@v2
+        with:
+          organization: ${{ github.repository_owner }}
+          token: ${{ steps.app-token.outputs.token }}
+          commit_badges: true
+          update_readme: true
+          readme_path: 'profile/README.md' # or 'README.md' for user/repo READMEs
+```
+
+### V2 - Manual Commit
+
+If you prefer to handle commits yourself:
+
+```yml
+name: update-organization-readme-badges
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-badges:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: organization-readme-badge-generator
+        uses: joshjohanning/organization-readme-badge-generator@v2
+        with:
+          organization: ${{ github.repository_owner }}
+          token: ${{ steps.app-token.outputs.token }}
+          badge_path: 'badges' # where to save SVG files
+
+      # Badge files are created locally, commit them yourself
+      - name: Commit badge files
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add badges/*.svg
+          git commit -m "chore: update organization badges" || echo "No changes"
+          git push
+```
+
+### Prerequisite (for automated README updates)
+
+If using `update_readme: true`, add markers to your `profile/README.md` file where you want the badges to appear:
 
 ```md
 # my-org-name
@@ -34,7 +132,11 @@ The action runs and generates an output with the markdown badges. There is a sam
 <!-- end organization badges -->
 ```
 
-### Example Workflow
+> **Note**: These markers are required for the automated README update feature in v2. If you're manually committing badges (v2 manual) or using v1, you can manage the badge placement yourself.
+
+### V1 - Legacy (shields.io URLs)
+
+The v1 approach using shields.io URLs and bash script for updates:
 
 ```yml
 name: update-organization-readme-badges
@@ -110,20 +212,24 @@ jobs:
 
 ## Inputs
 
-| Input          | Description                                                                                            | Required | Default                          |
-| -------------- | ------------------------------------------------------------------------------------------------------ | -------- | -------------------------------- |
-| `organization` | The GitHub organization to query                                                                       | Yes      | `${{ github.repository_owner }}` |
-| `token`        | PAT or GitHub App token to query the GitHub API                                                        | Yes      | `${{ github.token }}`            |
-| `days`         | Number of days to look back for pull request statistics                                                | No       | `30`                             |
-| `color`        | Badge color for the message (right side). Supports named colors (blue, green, red, etc.) or hex colors | No       | `blue`                           |
-| `label_color`  | Badge color for the label (left side). Supports named colors or hex colors (quote hex values)          | No       | `555`                            |
-| `graphql_url`  | The URL to the GitHub GraphQL API endpoint (for GitHub Enterprise)                                     | No       | `https://api.github.com/graphql` |
+| Input           | Description                                                                                                   | Required | Default                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------- |
+| `organization`  | The GitHub organization to query                                                                              | Yes      | `${{ github.repository_owner }}` |
+| `token`         | PAT or GitHub App token to query the GitHub API                                                               | Yes      | `${{ github.token }}`            |
+| `days`          | Number of days to look back for pull request statistics                                                       | No       | `30`                             |
+| `color`         | Badge color for the message (right side). Supports named colors (blue, green, red, etc.) or hex colors        | No       | `blue`                           |
+| `label_color`   | Badge color for the label (left side). Supports named colors or hex colors (quote hex values)                 | No       | `555`                            |
+| `graphql_url`   | The URL to the GitHub GraphQL API endpoint (for GitHub Enterprise)                                            | No       | `https://api.github.com/graphql` |
+| `badge_path`    | The path where badge SVG files should be saved (relative to repository root)                                  | No       | `badges`                         |
+| `commit_badges` | Whether to commit badge files to the repository using GitHub API (verified commits). Set to `true` to enable. | No       | `false`                          |
+| `readme_path`   | The path to the README file to update (relative to repository root). Only used if `update_readme` is `true`.  | No       | `profile/README.md`              |
+| `update_readme` | Whether to update the README file with badge references between markers (requires commit_badges to be true)   | No       | `false`                          |
 
 ## Outputs
 
-| Output   | Description                                      |
-| -------- | ------------------------------------------------ |
-| `badges` | The badge markdown to add to your README.md file |
+| Output   | Description                                                                     |
+| -------- | ------------------------------------------------------------------------------- |
+| `badges` | The badge markdown referencing local SVG files (e.g., `![...](./badges/*.svg)`) |
 
 ## Color Options
 

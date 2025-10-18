@@ -2,12 +2,19 @@ import { jest } from '@jest/globals';
 import core from '@actions/core';
 import {
   generateBadgeMarkdown,
+  generateBadgeSVG,
+  sanitizeFilename,
+  saveBadgeSVG,
+  getFileContent,
+  commitFile,
+  updateReadmeWithBadges,
   getRepositoryCount,
   getRepositories,
   getPullRequestsCount,
   generateBadges,
   validateRequiredInput
 } from '../src/index.js';
+import fs from 'fs';
 
 // Mock @actions/core
 jest.spyOn(core, 'info').mockImplementation(() => {});
@@ -335,7 +342,8 @@ describe('generateBadges', () => {
 
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('Total repositories');
-    expect(badges[0]).toContain('https://img.shields.io/badge/');
+    expect(badges[0]).toContain('./badges/');
+    expect(badges[0]).toContain('.svg');
     expect(badges[1]).toContain('PRs created in last 30 days');
     expect(badges[2]).toContain('Merged PRs in last 30 days');
     expect(core.info).toHaveBeenCalledWith('Total repositories: 2');
@@ -362,9 +370,11 @@ describe('generateBadges', () => {
     const badges = await generateBadges('empty-org', 'token', 30, mockGraphqlClient, 'blue', '555');
 
     expect(badges).toHaveLength(3);
-    expect(badges[0]).toContain('https://img.shields.io/badge/');
+    expect(badges[0]).toContain('./badges/');
+    expect(badges[0]).toContain('.svg');
     expect(badges[1]).toContain('PRs created in last 30 days');
-    expect(badges[1]).toContain('https://img.shields.io/badge/');
+    expect(badges[1]).toContain('./badges/');
+    expect(badges[1]).toContain('.svg');
   });
 
   it('should handle errors in generateBadges', async () => {
@@ -408,7 +418,8 @@ describe('generateBadges', () => {
     const badges = await generateBadges('test-org', 'token', 30, mockGraphqlClient);
 
     expect(badges).toHaveLength(3);
-    expect(badges[0]).toContain('https://img.shields.io/badge/');
+    expect(badges[0]).toContain('./badges/');
+    expect(badges[0]).toContain('.svg');
   });
 });
 
@@ -428,5 +439,261 @@ describe('validateRequiredInput', () => {
 
   it('should throw error when input is undefined', () => {
     expect(() => validateRequiredInput(undefined, 'days')).toThrow('days is required');
+  });
+});
+
+describe('generateBadgeSVG', () => {
+  it('should generate SVG badge', () => {
+    const result = generateBadgeSVG('Test Label', 42, 'blue', '555');
+    expect(result).toContain('<svg');
+    expect(result).toContain('Test Label');
+    expect(result).toContain('42');
+  });
+
+  it('should handle numeric values', () => {
+    const result = generateBadgeSVG('Count', 0, 'red', '555');
+    expect(result).toContain('<svg');
+    expect(result).toContain('Count');
+    expect(result).toContain('0');
+  });
+});
+
+describe('sanitizeFilename', () => {
+  it('should sanitize filename with special characters', () => {
+    const result = sanitizeFilename('Test: Label/Name');
+    expect(result).toBe('test--label-name');
+  });
+
+  it('should replace spaces with dashes', () => {
+    const result = sanitizeFilename('Total repositories');
+    expect(result).toBe('total-repositories');
+  });
+
+  it('should convert to lowercase', () => {
+    const result = sanitizeFilename('MyFile');
+    expect(result).toBe('myfile');
+  });
+});
+
+describe('saveBadgeSVG', () => {
+  const testDir = '/tmp/test-badges';
+
+  beforeEach(() => {
+    // Clean up test directory
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true });
+    }
+  });
+
+  afterEach(() => {
+    // Clean up test directory
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true });
+    }
+  });
+
+  it('should create directory and save SVG file', () => {
+    const svgContent = '<svg>test</svg>';
+    const filepath = saveBadgeSVG('Test Badge', svgContent, testDir);
+
+    expect(filepath).toContain('test-badge.svg');
+    expect(fs.existsSync(filepath)).toBe(true);
+    expect(fs.readFileSync(filepath, 'utf8')).toBe(svgContent);
+  });
+
+  it('should handle existing directory', () => {
+    fs.mkdirSync(testDir, { recursive: true });
+
+    const svgContent = '<svg>test2</svg>';
+    const filepath = saveBadgeSVG('Another Badge', svgContent, testDir);
+
+    expect(fs.existsSync(filepath)).toBe(true);
+    expect(fs.readFileSync(filepath, 'utf8')).toBe(svgContent);
+  });
+});
+
+describe('getFileContent', () => {
+  it('should get file content from repository', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockResolvedValue({
+          data: {
+            content: Buffer.from('test content').toString('base64'),
+            sha: 'abc123'
+          }
+        })
+      }
+    };
+
+    const result = await getFileContent('owner', 'repo', 'README.md', mockOctokit);
+
+    expect(result).toEqual({
+      content: 'test content',
+      sha: 'abc123'
+    });
+    expect(mockOctokit.repos.getContent).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      path: 'README.md'
+    });
+  });
+
+  it('should return null when file is not found', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockRejectedValue({ status: 404 })
+      }
+    };
+
+    const result = await getFileContent('owner', 'repo', 'missing.md', mockOctokit);
+
+    expect(result).toBeNull();
+  });
+
+  it('should throw error for other errors', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockRejectedValue({ status: 500, message: 'Server error' })
+      }
+    };
+
+    await expect(getFileContent('owner', 'repo', 'file.md', mockOctokit)).rejects.toEqual({
+      status: 500,
+      message: 'Server error'
+    });
+  });
+});
+
+describe('commitFile', () => {
+  it('should create new file when it does not exist', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockRejectedValue({ status: 404 }),
+        createOrUpdateFileContents: jest.fn().mockResolvedValue({
+          data: { commit: { sha: 'new123' } }
+        })
+      }
+    };
+
+    const result = await commitFile('owner', 'repo', 'new.txt', 'content', 'Add new file', mockOctokit);
+
+    expect(result.commit.sha).toBe('new123');
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      path: 'new.txt',
+      message: 'Add new file',
+      content: Buffer.from('content').toString('base64')
+    });
+  });
+
+  it('should update existing file with SHA', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockResolvedValue({
+          data: {
+            content: Buffer.from('old content').toString('base64'),
+            sha: 'old123'
+          }
+        }),
+        createOrUpdateFileContents: jest.fn().mockResolvedValue({
+          data: { commit: { sha: 'updated123' } }
+        })
+      }
+    };
+
+    const result = await commitFile('owner', 'repo', 'existing.txt', 'new content', 'Update file', mockOctokit);
+
+    expect(result.commit.sha).toBe('updated123');
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
+      owner: 'owner',
+      repo: 'repo',
+      path: 'existing.txt',
+      message: 'Update file',
+      content: Buffer.from('new content').toString('base64'),
+      sha: 'old123'
+    });
+  });
+});
+
+describe('updateReadmeWithBadges', () => {
+  it('should update README between markers', async () => {
+    const originalContent =
+      '# Title\n<!-- start organization badges -->\nold badges\n<!-- end organization badges -->\nMore content';
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockResolvedValue({
+          data: {
+            content: Buffer.from(originalContent).toString('base64'),
+            sha: 'readme123'
+          }
+        }),
+        createOrUpdateFileContents: jest.fn().mockResolvedValue({
+          data: { commit: { sha: 'updated456' } }
+        })
+      }
+    };
+
+    const result = await updateReadmeWithBadges('owner', 'repo', 'README.md', 'new badge content', mockOctokit);
+
+    expect(result.commit.sha).toBe('updated456');
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalled();
+
+    const call = mockOctokit.repos.createOrUpdateFileContents.mock.calls[0][0];
+    const updatedContent = Buffer.from(call.content, 'base64').toString('utf8');
+
+    expect(updatedContent).toContain('<!-- start organization badges -->');
+    expect(updatedContent).toContain('new badge content');
+    expect(updatedContent).toContain('<!-- end organization badges -->');
+    expect(updatedContent).not.toContain('old badges');
+  });
+
+  it('should return null when README is not found', async () => {
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockRejectedValue({ status: 404 })
+      }
+    };
+
+    const result = await updateReadmeWithBadges('owner', 'repo', 'README.md', 'badges', mockOctokit);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when markers are not found', async () => {
+    const originalContent = '# Title\nNo markers here';
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockResolvedValue({
+          data: {
+            content: Buffer.from(originalContent).toString('base64'),
+            sha: 'readme123'
+          }
+        })
+      }
+    };
+
+    const result = await updateReadmeWithBadges('owner', 'repo', 'README.md', 'badges', mockOctokit);
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when content is unchanged', async () => {
+    const badgeContent = 'badge content';
+    const originalContent = `# Title\n<!-- start organization badges -->\n${badgeContent}\n<!-- end organization badges -->\nMore content`;
+    const mockOctokit = {
+      repos: {
+        getContent: jest.fn().mockResolvedValue({
+          data: {
+            content: Buffer.from(originalContent).toString('base64'),
+            sha: 'readme123'
+          }
+        })
+      }
+    };
+
+    const result = await updateReadmeWithBadges('owner', 'repo', 'README.md', badgeContent, mockOctokit);
+
+    expect(result).toBeNull();
   });
 });
