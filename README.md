@@ -120,9 +120,9 @@ jobs:
           git push
 ```
 
-### Prerequisite
+### Prerequisite (for automated README updates)
 
-Add markers to your `profile/README.md` file where you want the badges to appear:
+If using `update_readme: true`, add markers to your `profile/README.md` file where you want the badges to appear:
 
 ```md
 # my-org-name
@@ -131,6 +131,8 @@ Add markers to your `profile/README.md` file where you want the badges to appear
 
 <!-- end organization badges -->
 ```
+
+> **Note**: These markers are required for the automated README update feature in v2. If you're manually committing badges (v2 manual) or using v1, you can manage the badge placement yourself.
 
 ### V1 - Legacy (shields.io URLs)
 
@@ -210,18 +212,18 @@ jobs:
 
 ## Inputs
 
-| Input           | Description                                                                                                     | Required | Default                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------- |
-| `organization`  | The GitHub organization to query                                                                                | Yes      | `${{ github.repository_owner }}` |
-| `token`         | PAT or GitHub App token to query the GitHub API                                                                 | Yes      | `${{ github.token }}`            |
-| `days`          | Number of days to look back for pull request statistics                                                         | No       | `30`                             |
-| `color`         | Badge color for the message (right side). Supports named colors (blue, green, red, etc.) or hex colors          | No       | `blue`                           |
-| `label_color`   | Badge color for the label (left side). Supports named colors or hex colors (quote hex values)                   | No       | `555`                            |
-| `graphql_url`   | The URL to the GitHub GraphQL API endpoint (for GitHub Enterprise)                                              | No       | `https://api.github.com/graphql` |
-| `badge_path`    | The path where badge SVG files should be saved (relative to repository root)                                    | No       | `badges`                         |
-| `commit_badges` | Whether to commit badge files to the repository using GitHub API (verified commits). Set to `true` to enable.   | No       | `false`                          |
-| `readme_path`   | The path to the README file to update (relative to repository root). Only used if `update_readme` is `true`.    | No       | `profile/README.md`              |
-| `update_readme` | Whether to update the README file with badge references between markers. Requires `commit_badges` to be `true`. | No       | `false`                          |
+| Input           | Description                                                                                                   | Required | Default                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------- |
+| `organization`  | The GitHub organization to query                                                                              | Yes      | `${{ github.repository_owner }}` |
+| `token`         | PAT or GitHub App token to query the GitHub API                                                               | Yes      | `${{ github.token }}`            |
+| `days`          | Number of days to look back for pull request statistics                                                       | No       | `30`                             |
+| `color`         | Badge color for the message (right side). Supports named colors (blue, green, red, etc.) or hex colors        | No       | `blue`                           |
+| `label_color`   | Badge color for the label (left side). Supports named colors or hex colors (quote hex values)                 | No       | `555`                            |
+| `graphql_url`   | The URL to the GitHub GraphQL API endpoint (for GitHub Enterprise)                                            | No       | `https://api.github.com/graphql` |
+| `badge_path`    | The path where badge SVG files should be saved (relative to repository root)                                  | No       | `badges`                         |
+| `commit_badges` | Whether to commit badge files to the repository using GitHub API (verified commits). Set to `true` to enable. | No       | `false`                          |
+| `readme_path`   | The path to the README file to update (relative to repository root). Only used if `update_readme` is `true`.  | No       | `profile/README.md`              |
+| `update_readme` | Whether to update the README file with badge references between markers (requires commit_badges to be true)   | No       | `false`                          |
 
 ## Outputs
 
