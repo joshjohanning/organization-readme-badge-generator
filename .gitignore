@@ -10,6 +10,10 @@ yarn-error.log*
 coverage/
 .nyc_output
 
+# Badges (except coverage badge)
+badges/*
+!badges/coverage.svg
+
 # Cache
 .eslintcache
 .npm
