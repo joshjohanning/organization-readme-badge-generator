@@ -194,6 +194,30 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
   };
 };
 
+export const processPullRequestsInBatches = async (org, repos, prFilterDate, client, batchSize = 10) => {
+  let totalOpenPRs = 0;
+  let totalMergedPRs = 0;
+
+  // Process repositories in batches
+  for (let i = 0; i < repos.length; i += batchSize) {
+    const batch = repos.slice(i, i + batchSize);
+
+    // Process each batch concurrently
+    const results = await Promise.all(batch.map(repo => getPullRequestsCount(org, repo, prFilterDate, client)));
+
+    // Aggregate results from the batch
+    for (const { total, merged } of results) {
+      totalOpenPRs += total;
+      totalMergedPRs += merged;
+    }
+  }
+
+  return {
+    totalOpenPRs,
+    totalMergedPRs
+  };
+};
+
 export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlClient, badgeColor, badgeLabelColor) => {
   const org = orgParam || organization;
   const numDays = daysParam || days;
@@ -215,19 +239,12 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
     const repoCount = repos.length;
     core.info(`Total repositories: ${repoCount}`);
     // pull requests
-    let totalOpenPRs = 0;
-    let totalMergedPRs = 0;
-
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - numDays);
     const prFilterDate = date.toISOString();
     core.debug(`Filtering PRs created after ${prFilterDate}`);
 
-    for (const repo of repos) {
-      const { total, merged } = await getPullRequestsCount(org, repo, prFilterDate, client);
-      totalOpenPRs += total;
-      totalMergedPRs += merged;
-    }
+    const { totalOpenPRs, totalMergedPRs } = await processPullRequestsInBatches(org, repos, prFilterDate, client);
 
     core.info(`Total pull requests created in last ${numDays} days for ${org}: ${totalOpenPRs}`);
     core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
