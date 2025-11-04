@@ -1,5 +1,5 @@
 name: 'GitHub Organization Readme Badge Generator'
-description: "An action to create markdown badges for your GitHub organization's README.md file"
+description: "An action to create SVG badge files for your GitHub organization's README.md file"
 
 branding:
   icon: 'award'
@@ -30,6 +30,22 @@ inputs:
     description: 'The color of the badge label (left side)'
     required: false
     default: '555'
+  badge_path:
+    description: 'The path where badge SVG files should be saved'
+    required: false
+    default: 'badges'
+  commit_badges:
+    description: 'Whether to commit badge files to the repository using GitHub API (verified commits)'
+    required: false
+    default: 'false'
+  readme_path:
+    description: 'The path to the README file to update (relative to repository root)'
+    required: false
+    default: 'profile/README.md'
+  update_readme:
+    description: 'Whether to update the README file with badge references between markers (requires commit_badges to be true)'
+    required: false
+    default: 'false'
 outputs:
   badges:
     description: 'The badge markdown to add to your README.md file'
