@@ -5,6 +5,7 @@ import {
   getRepositoryCount,
   getRepositories,
   getPullRequestsCount,
+  processPullRequestsInBatches,
   generateBadges,
   validateRequiredInput
 } from '../src/index.js';
@@ -271,6 +272,171 @@ describe('getPullRequestsCount', () => {
 
     expect(result.total).toBe(0);
     expect(result.merged).toBe(0);
+  });
+});
+
+describe('processPullRequestsInBatches', () => {
+  const filterDate = '2024-01-01';
+
+  it('should process multiple repositories in batches', async () => {
+    const mockGraphqlClient = jest
+      .fn()
+      // repo1
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [
+              {
+                createdAt: '2024-01-15T10:00:00Z',
+                mergedAt: '2024-01-20T10:00:00Z',
+                state: 'MERGED'
+              }
+            ],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      // repo2
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [
+              {
+                createdAt: '2024-01-10T10:00:00Z',
+                mergedAt: null,
+                state: 'OPEN'
+              }
+            ],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+
+    const repos = ['repo1', 'repo2'];
+    const result = await processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient, 10);
+
+    expect(result.totalOpenPRs).toBe(2);
+    expect(result.totalMergedPRs).toBe(1);
+    expect(mockGraphqlClient).toHaveBeenCalledTimes(2);
+  });
+
+  it('should process repositories in multiple batches', async () => {
+    const mockGraphqlClient = jest
+      .fn()
+      // batch 1: repo1, repo2
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [
+              {
+                createdAt: '2024-01-15T10:00:00Z',
+                mergedAt: '2024-01-20T10:00:00Z',
+                state: 'MERGED'
+              }
+            ],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [
+              {
+                createdAt: '2024-01-10T10:00:00Z',
+                mergedAt: null,
+                state: 'OPEN'
+              }
+            ],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      // batch 2: repo3
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [
+              {
+                createdAt: '2024-01-12T10:00:00Z',
+                mergedAt: '2024-01-14T10:00:00Z',
+                state: 'MERGED'
+              }
+            ],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+
+    const repos = ['repo1', 'repo2', 'repo3'];
+    const result = await processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient, 2);
+
+    expect(result.totalOpenPRs).toBe(3);
+    expect(result.totalMergedPRs).toBe(2);
+    expect(mockGraphqlClient).toHaveBeenCalledTimes(3);
+  });
+
+  it('should handle empty repository list', async () => {
+    const mockGraphqlClient = jest.fn();
+    const repos = [];
+    const result = await processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient, 10);
+
+    expect(result.totalOpenPRs).toBe(0);
+    expect(result.totalMergedPRs).toBe(0);
+    expect(mockGraphqlClient).not.toHaveBeenCalled();
+  });
+
+  it('should use default batch size of 10', async () => {
+    const mockGraphqlClient = jest.fn().mockResolvedValue({
+      repository: {
+        pullRequests: {
+          nodes: [],
+          pageInfo: { endCursor: null, hasNextPage: false }
+        }
+      }
+    });
+
+    const repos = Array.from({ length: 25 }, (_, i) => `repo${i}`);
+    await processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient);
+
+    // With batch size 10, should process all 25 repos concurrently in 3 batches
+    expect(mockGraphqlClient).toHaveBeenCalledTimes(25);
+  });
+
+  it('should aggregate PR counts correctly across batches', async () => {
+    const mockGraphqlClient = jest.fn().mockImplementation((_, { repo }) => {
+      // repo1 and repo2 have PRs, others don't
+      if (repo === 'repo1' || repo === 'repo2') {
+        return Promise.resolve({
+          repository: {
+            pullRequests: {
+              nodes: [
+                {
+                  createdAt: '2024-01-15T10:00:00Z',
+                  mergedAt: '2024-01-20T10:00:00Z',
+                  state: 'MERGED'
+                }
+              ],
+              pageInfo: { endCursor: null, hasNextPage: false }
+            }
+          }
+        });
+      }
+      return Promise.resolve({
+        repository: {
+          pullRequests: {
+            nodes: [],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+    });
+
+    const repos = ['repo1', 'repo2', 'repo3', 'repo4'];
+    const result = await processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient, 2);
+
+    expect(result.totalOpenPRs).toBe(2);
+    expect(result.totalMergedPRs).toBe(2);
   });
 });
 
