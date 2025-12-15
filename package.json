@@ -1,7 +1,7 @@
 {
   "name": "organization-readme-badge-generator",
   "description": "An action to create markdown badges for your GitHub organization's README.md file",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "",
   "private": true,
   "homepage": "https://github.com/joshjohanning/organization-readme-badge-generator#readme",
