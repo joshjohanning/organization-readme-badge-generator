@@ -1,7 +1,7 @@
 {
   "name": "organization-readme-badge-generator",
   "description": "An action to create markdown badges for your GitHub organization's README.md file",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "author": "",
   "private": true,
   "homepage": "https://github.com/joshjohanning/organization-readme-badge-generator#readme",
@@ -40,21 +40,21 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.11.1",
-    "@octokit/graphql": "^9.0.2",
+    "@actions/core": "^2.0.2",
+    "@octokit/graphql": "^9.0.3",
     "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@joshjohanning/make-coverage-badge-better": "^1.0.1",
-    "@vercel/ncc": "^0.38.1",
-    "eslint": "^9.37.0",
+    "@vercel/ncc": "^0.38.4",
+    "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-github": "^6.0.0",
     "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-jest": "^29.0.1",
-    "eslint-plugin-prettier": "^5.0.1",
-    "globals": "^16.4.0",
+    "eslint-plugin-jest": "^29.12.1",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^17.0.0",
     "jest": "^30.2.0",
-    "prettier": "^3.6.2"
+    "prettier": "^3.7.4"
   }
 }
