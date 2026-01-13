@@ -194,6 +194,15 @@ export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClien
   };
 };
 
+/**
+ * Processes pull request counts for multiple repositories in batches with limited concurrency
+ * @param {string} org - The organization name
+ * @param {string[]} repos - Array of repository names to process
+ * @param {string} prFilterDate - ISO date string to filter PRs created after this date
+ * @param {function} client - GraphQL client for API calls
+ * @param {number} [batchSize=10] - Number of repositories to process concurrently per batch
+ * @returns {Promise<{totalOpenPRs: number, totalMergedPRs: number}>} The aggregated PR counts
+ */
 export const processPullRequestsInBatches = async (org, repos, prFilterDate, client, batchSize = 10) => {
   let totalOpenPRs = 0;
   let totalMergedPRs = 0;

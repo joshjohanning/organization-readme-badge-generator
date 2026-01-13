@@ -438,6 +438,26 @@ describe('processPullRequestsInBatches', () => {
     expect(result.totalOpenPRs).toBe(2);
     expect(result.totalMergedPRs).toBe(2);
   });
+
+  it('should propagate errors when an API call fails within a batch', async () => {
+    const mockError = new Error('API rate limit exceeded');
+    const mockGraphqlClient = jest
+      .fn()
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      .mockRejectedValueOnce(mockError);
+
+    const repos = ['repo1', 'repo2'];
+    await expect(processPullRequestsInBatches('test-org', repos, filterDate, mockGraphqlClient, 10)).rejects.toThrow(
+      'API rate limit exceeded'
+    );
+  });
 });
 
 describe('generateBadges', () => {
