@@ -7,7 +7,10 @@ import {
   getPullRequestsCount,
   processPullRequestsInBatches,
   generateBadges,
-  validateRequiredInput
+  validateRequiredInput,
+  createGraphqlClient,
+  initializeConfig,
+  run
 } from '../src/index.js';
 
 // Mock @actions/core
@@ -15,6 +18,7 @@ jest.spyOn(core, 'info').mockImplementation(() => {});
 jest.spyOn(core, 'debug').mockImplementation(() => {});
 jest.spyOn(core, 'error').mockImplementation(() => {});
 jest.spyOn(core, 'setOutput').mockImplementation(() => {});
+jest.spyOn(core, 'getInput').mockImplementation(() => '');
 
 describe('generateBadgeMarkdown', () => {
   it('should generate correct markdown badge with shields.io URL', () => {
@@ -596,6 +600,32 @@ describe('generateBadges', () => {
     expect(badges).toHaveLength(3);
     expect(badges[0]).toContain('https://img.shields.io/badge/');
   });
+
+  it('should use default days when not provided', async () => {
+    const mockGraphqlClient = jest
+      .fn()
+      .mockResolvedValueOnce({
+        organization: {
+          repositories: {
+            nodes: [{ name: 'repo1' }],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+
+    const badges = await generateBadges('test-org', 'token', null, mockGraphqlClient, 'blue', '555');
+
+    expect(badges).toHaveLength(3);
+    expect(badges[1]).toContain('PRs created in last 30 days');
+  });
 });
 
 describe('validateRequiredInput', () => {
@@ -614,5 +644,154 @@ describe('validateRequiredInput', () => {
 
   it('should throw error when input is undefined', () => {
     expect(() => validateRequiredInput(undefined, 'days')).toThrow('days is required');
+  });
+});
+
+describe('createGraphqlClient', () => {
+  it('should create a graphql client with default URL', () => {
+    const client = createGraphqlClient('test-token');
+    expect(client).toBeDefined();
+    expect(typeof client).toBe('function');
+  });
+
+  it('should create a graphql client with custom URL', () => {
+    const client = createGraphqlClient('test-token', 'https://custom.github.com/graphql');
+    expect(client).toBeDefined();
+    expect(typeof client).toBe('function');
+  });
+
+  it('should create a graphql client when custom URL matches default', () => {
+    const client = createGraphqlClient('test-token', 'https://api.github.com/graphql');
+    expect(client).toBeDefined();
+    expect(typeof client).toBe('function');
+  });
+});
+
+describe('run', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should execute with provided config and set outputs', async () => {
+    const mockGraphqlClient = jest
+      .fn()
+      .mockResolvedValueOnce({
+        organization: {
+          repositories: {
+            nodes: [{ name: 'repo1' }],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            nodes: [],
+            pageInfo: { endCursor: null, hasNextPage: false }
+          }
+        }
+      });
+
+    const config = {
+      organization: 'test-org',
+      token: 'test-token',
+      days: 30,
+      graphqlClient: mockGraphqlClient,
+      color: 'blue',
+      labelColor: '555'
+    };
+
+    const badges = await run(config);
+
+    expect(badges).toHaveLength(3);
+    expect(core.setOutput).toHaveBeenCalledWith('badges', expect.any(String));
+    expect(core.info).toHaveBeenCalledWith(expect.stringContaining('Badge markdown:'));
+  });
+
+  it('should handle errors during execution', async () => {
+    const mockGraphqlClient = jest.fn().mockRejectedValue(new Error('API Error'));
+
+    const mockExit = jest.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+
+    const config = {
+      organization: 'test-org',
+      token: 'test-token',
+      days: 30,
+      graphqlClient: mockGraphqlClient,
+      color: 'blue',
+      labelColor: '555'
+    };
+
+    await expect(run(config)).rejects.toThrow('process.exit called');
+    expect(core.error).toHaveBeenCalled();
+
+    mockExit.mockRestore();
+  });
+});
+
+describe('initializeConfig', () => {
+  let getInputSpy;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getInputSpy = jest.spyOn(core, 'getInput');
+  });
+
+  afterEach(() => {
+    getInputSpy.mockRestore();
+  });
+
+  it('should throw error when organization is missing', () => {
+    getInputSpy.mockReturnValue('');
+    expect(() => initializeConfig()).toThrow('organization is required');
+  });
+
+  it('should throw error when token is missing', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow('token is required');
+  });
+
+  it('should return config with default values when inputs provided', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      return '';
+    });
+
+    const config = initializeConfig();
+
+    expect(config.organization).toBe('test-org');
+    expect(config.token).toBe('test-token');
+    expect(config.days).toBe(30);
+    expect(config.graphqlUrl).toBe('https://api.github.com/graphql');
+    expect(config.color).toBe('blue');
+    expect(config.labelColor).toBe('555');
+    expect(config.graphqlClient).toBeDefined();
+  });
+
+  it('should use custom values when provided', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'custom-org';
+      if (name === 'token') return 'custom-token';
+      if (name === 'days') return '60';
+      if (name === 'graphql_url') return 'https://custom.github.com/graphql';
+      if (name === 'color') return 'green';
+      if (name === 'label_color') return '999';
+      return '';
+    });
+
+    const config = initializeConfig();
+
+    expect(config.organization).toBe('custom-org');
+    expect(config.token).toBe('custom-token');
+    expect(config.days).toBe('60');
+    expect(config.graphqlUrl).toBe('https://custom.github.com/graphql');
+    expect(config.color).toBe('green');
+    expect(config.labelColor).toBe('999');
   });
 });

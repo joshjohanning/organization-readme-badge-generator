@@ -41,14 +41,6 @@ const argv = yargs(hideBin(process.argv))
 
 // run via `node src/index.js --organization=joshjohanning-org --token=ghp_abc
 
-let organization;
-let token;
-let days;
-let graphqlUrl;
-let color;
-let labelColor;
-let graphqlWithAuth;
-
 // Exported function for validating required inputs
 export function validateRequiredInput(input, label) {
   if (!input) {
@@ -57,30 +49,79 @@ export function validateRequiredInput(input, label) {
   return input;
 }
 
-// Only initialize these when running directly (not during tests)
-if (process.env.NODE_ENV !== 'test') {
-  organization = argv.organization || core.getInput('organization');
-  token = argv.token || core.getInput('token');
-  days = argv.days || core.getInput('days') || 30;
-  graphqlUrl = argv.graphqlUrl || core.getInput('graphql_url') || 'https://api.github.com/graphql';
-  color = argv.color || core.getInput('color') || 'blue';
-  labelColor = argv.labelColor || core.getInput('label_color') || '555';
-
-  validateRequiredInput(organization, 'organization');
-  validateRequiredInput(token, 'token');
-
-  graphqlWithAuth = graphql.defaults({
+/**
+ * Creates a GraphQL client with authentication
+ * @param {string} authToken - The authentication token
+ * @param {string} [baseUrl] - Optional custom GraphQL URL
+ * @returns {function} The configured GraphQL client
+ */
+export function createGraphqlClient(authToken, baseUrl = DEFAULT_GRAPHQL_URL) {
+  let client = graphql.defaults({
     headers: {
-      authorization: `token ${token}`
+      authorization: `token ${authToken}`
     }
   });
 
   // Set baseUrl if a custom GraphQL URL is provided
-  if (graphqlUrl && graphqlUrl !== 'https://api.github.com/graphql') {
-    graphqlWithAuth = graphqlWithAuth.defaults({
-      baseUrl: graphqlUrl
+  if (baseUrl && baseUrl !== DEFAULT_GRAPHQL_URL) {
+    client = client.defaults({
+      baseUrl: baseUrl
     });
   }
+
+  return client;
+}
+
+/**
+ * Initializes configuration from command line arguments or GitHub Actions inputs
+ * @returns {{organization: string, token: string, days: number, graphqlUrl: string, color: string, labelColor: string, graphqlClient: function}} Configuration object
+ */
+export function initializeConfig() {
+  const org = argv.organization || core.getInput('organization');
+  const tkn = argv.token || core.getInput('token');
+  const numDays = argv.days || core.getInput('days') || DEFAULT_DAYS;
+  const gqlUrl = argv.graphqlUrl || core.getInput('graphql_url') || DEFAULT_GRAPHQL_URL;
+  const badgeColor = argv.color || core.getInput('color') || DEFAULT_COLOR;
+  const badgeLabelColor = argv.labelColor || core.getInput('label_color') || DEFAULT_LABEL_COLOR;
+
+  validateRequiredInput(org, 'organization');
+  validateRequiredInput(tkn, 'token');
+
+  const client = createGraphqlClient(tkn, gqlUrl);
+
+  return {
+    organization: org,
+    token: tkn,
+    days: numDays,
+    graphqlUrl: gqlUrl,
+    color: badgeColor,
+    labelColor: badgeLabelColor,
+    graphqlClient: client
+  };
+}
+
+/**
+ * Main execution function that generates badges and sets outputs
+ * @param {object} [config] - Optional configuration object (uses initializeConfig if not provided)
+ * @returns {Promise<string[]>} Array of badge markdown strings
+ */
+export async function run(config) {
+  const cfg = config || initializeConfig();
+
+  const badges = await generateBadges(
+    cfg.organization,
+    cfg.token,
+    cfg.days,
+    cfg.graphqlClient,
+    cfg.color,
+    cfg.labelColor
+  );
+  core.info('');
+  const badgesMarkdown = badges.join(' ');
+  core.info(`Badge markdown: ${badgesMarkdown}`);
+  core.setOutput('badges', badgesMarkdown);
+
+  return badges;
 }
 
 export const generateBadgeMarkdown = (text, number, badgeColor, badgeLabelColor) => {
@@ -95,7 +136,7 @@ export const generateBadgeMarkdown = (text, number, badgeColor, badgeLabelColor)
   return markdownImage;
 };
 
-export const getRepositoryCount = async (org, graphqlClient = graphqlWithAuth) => {
+export const getRepositoryCount = async (org, graphqlClient) => {
   const { organization: orgData } = await graphqlClient(
     `
     query ($organization: String!) {
@@ -112,7 +153,7 @@ export const getRepositoryCount = async (org, graphqlClient = graphqlWithAuth) =
   return orgData.repositories.totalCount;
 };
 
-export const getRepositories = async (org, graphqlClient = graphqlWithAuth) => {
+export const getRepositories = async (org, graphqlClient) => {
   let endCursor;
   let hasNextPage = true;
   const repositories = [];
@@ -146,7 +187,7 @@ export const getRepositories = async (org, graphqlClient = graphqlWithAuth) => {
   return repositories;
 };
 
-export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClient = graphqlWithAuth) => {
+export const getPullRequestsCount = async (org, repo, prFilterDate, graphqlClient) => {
   let endCursor;
   let hasNextPage = true;
   let total = 0;
@@ -227,19 +268,13 @@ export const processPullRequestsInBatches = async (org, repos, prFilterDate, cli
   };
 };
 
-export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlClient, badgeColor, badgeLabelColor) => {
-  const org = orgParam || organization;
-  const numDays = daysParam || days;
-  const msgColor = badgeColor || color || 'blue';
-  const lblColor = badgeLabelColor || labelColor || '555';
-  let client = graphqlClient || graphqlWithAuth;
+export const generateBadges = async (org, tokenParam, numDays, graphqlClient, badgeColor, badgeLabelColor) => {
+  const msgColor = badgeColor || DEFAULT_COLOR;
+  const lblColor = badgeLabelColor || DEFAULT_LABEL_COLOR;
+  const daysCount = numDays || DEFAULT_DAYS;
+  let client = graphqlClient;
   if (!client && tokenParam) {
-    client = graphql.defaults({
-      headers: {
-        authorization: `token ${tokenParam}`
-      },
-      baseUrl: argv.graphqlUrl || 'https://api.github.com/graphql'
-    });
+    client = createGraphqlClient(tokenParam, argv.graphqlUrl || DEFAULT_GRAPHQL_URL);
   }
 
   try {
@@ -249,19 +284,19 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
     core.info(`Total repositories: ${repoCount}`);
     // pull requests
     const date = new Date();
-    date.setUTCDate(date.getUTCDate() - numDays);
+    date.setUTCDate(date.getUTCDate() - daysCount);
     const prFilterDate = date.toISOString();
     core.debug(`Filtering PRs created after ${prFilterDate}`);
 
     const { totalOpenPRs, totalMergedPRs } = await processPullRequestsInBatches(org, repos, prFilterDate, client);
 
-    core.info(`Total pull requests created in last ${numDays} days for ${org}: ${totalOpenPRs}`);
-    core.info(`Total merged pull requests in last ${numDays} days for ${org}: ${totalMergedPRs}`);
+    core.info(`Total pull requests created in last ${daysCount} days for ${org}: ${totalOpenPRs}`);
+    core.info(`Total merged pull requests in last ${daysCount} days for ${org}: ${totalMergedPRs}`);
 
     const badges = [
       generateBadgeMarkdown(`Total repositories`, repoCount, msgColor, lblColor),
-      generateBadgeMarkdown(`PRs created in last ${numDays} days`, totalOpenPRs, msgColor, lblColor),
-      generateBadgeMarkdown(`Merged PRs in last ${numDays} days`, totalMergedPRs, msgColor, lblColor)
+      generateBadgeMarkdown(`PRs created in last ${daysCount} days`, totalOpenPRs, msgColor, lblColor),
+      generateBadgeMarkdown(`Merged PRs in last ${daysCount} days`, totalMergedPRs, msgColor, lblColor)
     ];
 
     return badges;
@@ -275,11 +310,7 @@ export const generateBadges = async (orgParam, tokenParam, daysParam, graphqlCli
 if (process.env.NODE_ENV !== 'test') {
   (async () => {
     try {
-      const badges = await generateBadges();
-      core.info('');
-      const badgesMarkdown = badges.join(' ');
-      core.info(`Badge markdown: ${badgesMarkdown}`);
-      core.setOutput('badges', badgesMarkdown);
+      await run();
     } catch (error) {
       core.error(`Failed to generate badges: ${error.message}`);
       core.error(error.stack);
