@@ -1,4 +1,4 @@
-import core from '@actions/core';
+import * as core from '@actions/core';
 import { graphql } from '@octokit/graphql';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';

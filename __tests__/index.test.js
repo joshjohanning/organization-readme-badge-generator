@@ -1,6 +1,20 @@
 import { jest } from '@jest/globals';
-import core from '@actions/core';
-import {
+
+// Mock @actions/core before importing the module
+const mockCore = {
+  info: jest.fn(),
+  debug: jest.fn(),
+  error: jest.fn(),
+  setOutput: jest.fn(),
+  getInput: jest.fn().mockReturnValue(''),
+  setFailed: jest.fn(),
+  warning: jest.fn()
+};
+
+jest.unstable_mockModule('@actions/core', () => mockCore);
+
+// Import after mocking
+const {
   generateBadgeMarkdown,
   getRepositoryCount,
   getRepositories,
@@ -11,14 +25,10 @@ import {
   createGraphqlClient,
   initializeConfig,
   run
-} from '../src/index.js';
+} = await import('../src/index.js');
 
-// Mock @actions/core
-jest.spyOn(core, 'info').mockImplementation(() => {});
-jest.spyOn(core, 'debug').mockImplementation(() => {});
-jest.spyOn(core, 'error').mockImplementation(() => {});
-jest.spyOn(core, 'setOutput').mockImplementation(() => {});
-jest.spyOn(core, 'getInput').mockImplementation(() => '');
+// Export mockCore for test assertions
+const core = mockCore;
 
 describe('generateBadgeMarkdown', () => {
   it('should generate correct markdown badge with shields.io URL', () => {
