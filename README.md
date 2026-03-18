@@ -8,6 +8,10 @@
 
 An action to create markdown badges for your GitHub organization's README.md file using shields.io.
 
+## What's new
+
+Please refer to the [release page](https://github.com/joshjohanning/organization-readme-badge-generator/releases) for the latest release notes.
+
 ## Example
 
 <!-- start organization badges -->
@@ -63,7 +67,7 @@ jobs:
 
       - name: organization-readme-badge-generator
         id: organization-readme-badge-generator
-        uses: joshjohanning/organization-readme-badge-generator@v1
+        uses: joshjohanning/organization-readme-badge-generator@v2
         with:
           organization: ${{ github.repository_owner }}
           token: ${{ steps.app-token.outputs.token }} # recommend to use a GitHub App and not a PAT
