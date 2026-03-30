@@ -1,45 +1,11 @@
 import * as core from '@actions/core';
 import { graphql } from '@octokit/graphql';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 
 // Default values
 const DEFAULT_DAYS = 30;
 const DEFAULT_GRAPHQL_URL = 'https://api.github.com/graphql';
 const DEFAULT_COLOR = 'blue';
 const DEFAULT_LABEL_COLOR = '555';
-
-const argv = yargs(hideBin(process.argv))
-  .option('organization', {
-    describe: 'The organization',
-    type: 'string'
-  })
-  .option('token', {
-    describe: 'The token',
-    type: 'string'
-  })
-  .option('days', {
-    describe: `The number of days (default: ${DEFAULT_DAYS})`,
-    type: 'number'
-  })
-  .option('graphqlUrl', {
-    describe: `The GraphQL URL (default: ${DEFAULT_GRAPHQL_URL})`,
-    type: 'string'
-  })
-  .option('color', {
-    describe: `The color of the badge message (right side) (default: ${DEFAULT_COLOR})`,
-    type: 'string'
-  })
-  .option('labelColor', {
-    describe: `The color of the badge label (left side) (default: ${DEFAULT_LABEL_COLOR})`,
-    type: 'string'
-  })
-  .wrap(null) // Use full terminal width for better formatting
-  .version()
-  .help()
-  .parse();
-
-// run via `node src/index.js --organization=joshjohanning-org --token=ghp_abc
 
 // Exported function for validating required inputs
 export function validateRequiredInput(input, label) {
@@ -73,16 +39,24 @@ export function createGraphqlClient(authToken, baseUrl = DEFAULT_GRAPHQL_URL) {
 }
 
 /**
- * Initializes configuration from command line arguments or GitHub Actions inputs
+ * Initializes configuration from GitHub Actions inputs
  * @returns {{organization: string, token: string, days: number, graphqlUrl: string, color: string, labelColor: string, graphqlClient: function}} Configuration object
  */
 export function initializeConfig() {
-  const org = argv.organization || core.getInput('organization');
-  const tkn = argv.token || core.getInput('token');
-  const numDays = argv.days || core.getInput('days') || DEFAULT_DAYS;
-  const gqlUrl = argv.graphqlUrl || core.getInput('graphql_url') || DEFAULT_GRAPHQL_URL;
-  const badgeColor = argv.color || core.getInput('color') || DEFAULT_COLOR;
-  const badgeLabelColor = argv.labelColor || core.getInput('label_color') || DEFAULT_LABEL_COLOR;
+  const org = core.getInput('organization');
+  const tkn = core.getInput('token');
+  const daysInput = core.getInput('days');
+  let numDays = DEFAULT_DAYS;
+  if (daysInput) {
+    const parsedDays = Number(daysInput);
+    if (!Number.isInteger(parsedDays) || parsedDays <= 0) {
+      throw new Error(`Invalid 'days' input: must be a positive integer`);
+    }
+    numDays = parsedDays;
+  }
+  const gqlUrl = core.getInput('graphql_url') || DEFAULT_GRAPHQL_URL;
+  const badgeColor = core.getInput('color') || DEFAULT_COLOR;
+  const badgeLabelColor = core.getInput('label_color') || DEFAULT_LABEL_COLOR;
 
   validateRequiredInput(org, 'organization');
   validateRequiredInput(tkn, 'token');
@@ -114,7 +88,8 @@ export async function run(config) {
     cfg.days,
     cfg.graphqlClient,
     cfg.color,
-    cfg.labelColor
+    cfg.labelColor,
+    cfg.graphqlUrl
   );
   core.info('');
   const badgesMarkdown = badges.join(' ');
@@ -268,13 +243,21 @@ export const processPullRequestsInBatches = async (org, repos, prFilterDate, cli
   };
 };
 
-export const generateBadges = async (org, tokenParam, numDays, graphqlClient, badgeColor, badgeLabelColor) => {
+export const generateBadges = async (
+  org,
+  tokenParam,
+  numDays,
+  graphqlClient,
+  badgeColor,
+  badgeLabelColor,
+  graphqlUrl = DEFAULT_GRAPHQL_URL
+) => {
   const msgColor = badgeColor || DEFAULT_COLOR;
   const lblColor = badgeLabelColor || DEFAULT_LABEL_COLOR;
   const daysCount = numDays || DEFAULT_DAYS;
   let client = graphqlClient;
   if (!client && tokenParam) {
-    client = createGraphqlClient(tokenParam, argv.graphqlUrl || DEFAULT_GRAPHQL_URL);
+    client = createGraphqlClient(tokenParam, graphqlUrl);
   }
 
   try {

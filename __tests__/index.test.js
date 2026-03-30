@@ -784,6 +784,46 @@ describe('initializeConfig', () => {
     expect(config.graphqlClient).toBeDefined();
   });
 
+  it('should throw error when days is not a valid number', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return 'abc';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
+  it('should throw error when days is zero', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return '0';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
+  it('should throw error when days is negative', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return '-1';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
+  it('should throw error when days is a decimal', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return '10.5';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
   it('should use custom values when provided', () => {
     getInputSpy.mockImplementation(name => {
       if (name === 'organization') return 'custom-org';
@@ -799,7 +839,7 @@ describe('initializeConfig', () => {
 
     expect(config.organization).toBe('custom-org');
     expect(config.token).toBe('custom-token');
-    expect(config.days).toBe('60');
+    expect(config.days).toBe(60);
     expect(config.graphqlUrl).toBe('https://custom.github.com/graphql');
     expect(config.color).toBe('green');
     expect(config.labelColor).toBe('999');
