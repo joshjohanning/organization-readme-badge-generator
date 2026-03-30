@@ -48,8 +48,8 @@ export function initializeConfig() {
   const daysInput = core.getInput('days');
   let numDays = DEFAULT_DAYS;
   if (daysInput) {
-    const parsedDays = Number.parseInt(daysInput, 10);
-    if (Number.isNaN(parsedDays) || parsedDays <= 0) {
+    const parsedDays = Number(daysInput);
+    if (!Number.isInteger(parsedDays) || parsedDays <= 0) {
       throw new Error(`Invalid 'days' input: must be a positive integer`);
     }
     numDays = parsedDays;
