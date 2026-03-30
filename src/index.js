@@ -39,13 +39,21 @@ export function createGraphqlClient(authToken, baseUrl = DEFAULT_GRAPHQL_URL) {
 }
 
 /**
- * Initializes configuration from command line arguments or GitHub Actions inputs
+ * Initializes configuration from GitHub Actions inputs
  * @returns {{organization: string, token: string, days: number, graphqlUrl: string, color: string, labelColor: string, graphqlClient: function}} Configuration object
  */
 export function initializeConfig() {
   const org = core.getInput('organization');
   const tkn = core.getInput('token');
-  const numDays = core.getInput('days') || DEFAULT_DAYS;
+  const daysInput = core.getInput('days');
+  let numDays = DEFAULT_DAYS;
+  if (daysInput) {
+    const parsedDays = Number.parseInt(daysInput, 10);
+    if (Number.isNaN(parsedDays) || parsedDays <= 0) {
+      throw new Error(`Invalid 'days' input: must be a positive integer`);
+    }
+    numDays = parsedDays;
+  }
   const gqlUrl = core.getInput('graphql_url') || DEFAULT_GRAPHQL_URL;
   const badgeColor = core.getInput('color') || DEFAULT_COLOR;
   const badgeLabelColor = core.getInput('label_color') || DEFAULT_LABEL_COLOR;
@@ -80,7 +88,8 @@ export async function run(config) {
     cfg.days,
     cfg.graphqlClient,
     cfg.color,
-    cfg.labelColor
+    cfg.labelColor,
+    cfg.graphqlUrl
   );
   core.info('');
   const badgesMarkdown = badges.join(' ');
@@ -234,13 +243,21 @@ export const processPullRequestsInBatches = async (org, repos, prFilterDate, cli
   };
 };
 
-export const generateBadges = async (org, tokenParam, numDays, graphqlClient, badgeColor, badgeLabelColor) => {
+export const generateBadges = async (
+  org,
+  tokenParam,
+  numDays,
+  graphqlClient,
+  badgeColor,
+  badgeLabelColor,
+  graphqlUrl = DEFAULT_GRAPHQL_URL
+) => {
   const msgColor = badgeColor || DEFAULT_COLOR;
   const lblColor = badgeLabelColor || DEFAULT_LABEL_COLOR;
   const daysCount = numDays || DEFAULT_DAYS;
   let client = graphqlClient;
   if (!client && tokenParam) {
-    client = createGraphqlClient(tokenParam, DEFAULT_GRAPHQL_URL);
+    client = createGraphqlClient(tokenParam, graphqlUrl);
   }
 
   try {

@@ -799,7 +799,7 @@ describe('initializeConfig', () => {
 
     expect(config.organization).toBe('custom-org');
     expect(config.token).toBe('custom-token');
-    expect(config.days).toBe('60');
+    expect(config.days).toBe(60);
     expect(config.graphqlUrl).toBe('https://custom.github.com/graphql');
     expect(config.color).toBe('green');
     expect(config.labelColor).toBe('999');
