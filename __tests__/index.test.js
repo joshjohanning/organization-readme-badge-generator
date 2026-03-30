@@ -784,6 +784,36 @@ describe('initializeConfig', () => {
     expect(config.graphqlClient).toBeDefined();
   });
 
+  it('should throw error when days is not a valid number', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return 'abc';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
+  it('should throw error when days is zero', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return '0';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
+  it('should throw error when days is negative', () => {
+    getInputSpy.mockImplementation(name => {
+      if (name === 'organization') return 'test-org';
+      if (name === 'token') return 'test-token';
+      if (name === 'days') return '-1';
+      return '';
+    });
+    expect(() => initializeConfig()).toThrow(`Invalid 'days' input: must be a positive integer`);
+  });
+
   it('should use custom values when provided', () => {
     getInputSpy.mockImplementation(name => {
       if (name === 'organization') return 'custom-org';
